@@ -92,3 +92,4 @@ const SKILLS = [
 ];
 
 
+export { PROJECTS, SKILLS };
