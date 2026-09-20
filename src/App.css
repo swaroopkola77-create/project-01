@@ -348,6 +348,8 @@ main {
 }
 
 .button--light:hover,
+.is-copied { }
+
 .button--light.is-copied {
   border-color: var(--acid);
   background: var(--acid);
@@ -653,6 +655,8 @@ main {
 .project-card__icon::after {
   transform: rotate(90deg);
 }
+
+.is-open { }
 
 .project-card.is-open .project-card__icon {
   transform: rotate(45deg);
