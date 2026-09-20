@@ -93,6 +93,265 @@ const SKILLS = [
   { label: "DSA", group: "Problem Solving", level: "Core" },
 ];
 
+
+function rootClickPulse() {
+  document.documentElement.style.setProperty("--hand-cursor-pulse", "1");
+  window.setTimeout(() => {
+    document.documentElement.style.setProperty("--hand-cursor-pulse", "0");
+  }, 180);
+}
+
+const HAND_LANDMARKER_MODULE_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm";
+const HAND_LANDMARKER_WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm";
+const HAND_LANDMARKER_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+function distance2d(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function fingerExtended(lm, tip, pip, mcp) {
+  const wrist = lm[0];
+  return distance2d(wrist, lm[tip]) > distance2d(wrist, lm[pip]) * 1.12 &&
+    angleAt(lm[tip], lm[pip], lm[mcp]) > 145;
+}
+
+function angleAt(a, b, c) {
+  const abx = a.x - b.x;
+  const aby = a.y - b.y;
+  const cbx = c.x - b.x;
+  const cby = c.y - b.y;
+  const dot = abx * cbx + aby * cby;
+  const mag = Math.hypot(abx, aby) * Math.hypot(cbx, cby);
+  if (!mag) return 0;
+  return Math.acos(Math.max(-1, Math.min(1, dot / mag))) * 180 / Math.PI;
+}
+
+function detectHandMode(lm) {
+  const index = fingerExtended(lm, 8, 6, 5);
+  const middle = fingerExtended(lm, 12, 10, 9);
+  const ring = fingerExtended(lm, 16, 14, 13);
+  const pinky = fingerExtended(lm, 20, 18, 17);
+  if (index && middle && !ring && !pinky) return "scroll";
+  if (index && !middle && !ring && !pinky) return "pointer";
+  return "idle";
+}
+
+function HandControl({ onStatusChange }) {
+  const videoRef = useRef(null);
+  const detectorRef = useRef(null);
+  const streamRef = useRef(null);
+  const frameRef = useRef(null);
+  const clickLockRef = useRef(false);
+  const activeRef = useRef(false);
+  const smoothRef = useRef({ x: 0.5, y: 0.5 });
+  const scrollRef = useRef(null);
+
+  const [enabled, setEnabled] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [status, setStatus] = useState("off");
+  const [error, setError] = useState("");
+
+  const setStatusSafe = (value) => {
+    setStatus(value);
+    onStatusChange?.(value);
+  };
+
+  const setCursor = (x, y, mode) => {
+    document.documentElement.style.setProperty("--hand-x", x + "px");
+    document.documentElement.style.setProperty("--hand-y", y + "px");
+    document.documentElement.style.setProperty("--hand-cursor-opacity", "1");
+    document.documentElement.style.setProperty("--hand-cursor-scale", mode === "scroll" ? "1.15" : "1");
+  };
+
+  const clearCursor = () => {
+    document.documentElement.style.setProperty("--hand-cursor-opacity", "0");
+  };
+
+  useEffect(() => {
+    activeRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => {
+    return () => {
+      activeRef.current = false;
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      detectorRef.current?.close?.();
+      clearCursor();
+    };
+  }, []);
+
+  const detectFrame = () => {
+    const video = videoRef.current;
+    const detector = detectorRef.current;
+
+    if (!activeRef.current || !video || !detector || video.readyState < 2) {
+      if (activeRef.current) frameRef.current = requestAnimationFrame(detectFrame);
+      return;
+    }
+
+    const result = detector.detectForVideo(video, performance.now());
+    const hand = result?.landmarks?.[0];
+
+    if (!hand) {
+      scrollRef.current = null;
+      setStatusSafe("searching");
+      clearCursor();
+      frameRef.current = requestAnimationFrame(detectFrame);
+      return;
+    }
+
+    const mode = detectHandMode(hand);
+    const tip = hand[8];
+    const targetX = 1 - tip.x;
+    const targetY = tip.y;
+    const factor = mode === "scroll" ? 0.18 : 0.26;
+
+    smoothRef.current.x += (targetX - smoothRef.current.x) * factor;
+    smoothRef.current.y += (targetY - smoothRef.current.y) * factor;
+
+    const x = Math.max(10, Math.min(window.innerWidth - 10, smoothRef.current.x * window.innerWidth));
+    const y = Math.max(10, Math.min(window.innerHeight - 10, smoothRef.current.y * window.innerHeight));
+
+    setCursor(x, y, mode);
+
+    if (mode === "pointer") {
+      const pinch = distance2d(hand[4], hand[8]) / Math.max(distance2d(hand[0], hand[5]), 0.05);
+
+      if (pinch < 0.55 && !clickLockRef.current) {
+        const target = document.elementFromPoint(x, y);
+        if (target instanceof HTMLElement) {
+          target.click();
+          rootClickPulse();
+        }
+        clickLockRef.current = true;
+        window.setTimeout(() => { clickLockRef.current = false; }, 650);
+      }
+
+      scrollRef.current = null;
+      setStatusSafe("pointer");
+    } else if (mode === "scroll") {
+      if (scrollRef.current !== null) {
+        const delta = (y - scrollRef.current) * 5.5;
+        if (Math.abs(delta) > 0.2) window.scrollBy({ top: delta, behavior: "auto" });
+      }
+      scrollRef.current = y;
+      setStatusSafe("scroll");
+    } else {
+      scrollRef.current = null;
+      setStatusSafe("tracking");
+    }
+
+    frameRef.current = requestAnimationFrame(detectFrame);
+  };
+
+  const start = async () => {
+    setError("");
+    setStatusSafe("starting");
+
+    try {
+      const mediapipe = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm");
+      const fileset = await mediapipe.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm");
+
+      detectorRef.current = await mediapipe.HandLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        },
+        runningMode: "VIDEO",
+        numHands: 1,
+        minHandDetectionConfidence: 0.62,
+        minHandPresenceConfidence: 0.58,
+        minTrackingConfidence: 0.58,
+      });
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      videoRef.current.playsInline = true;
+      await videoRef.current.play();
+
+      setEnabled(true);
+      setStatusSafe("searching");
+      frameRef.current = requestAnimationFrame(detectFrame);
+    } catch (err) {
+      setEnabled(false);
+      setStatusSafe("error");
+      setError(err?.name === "NotAllowedError"
+        ? "Camera permission was denied. Allow camera access and try again."
+        : "Hand tracking could not start on this browser.");
+      detectorRef.current?.close?.();
+      detectorRef.current = null;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      clearCursor();
+    }
+  };
+
+  const stop = () => {
+    activeRef.current = false;
+    setEnabled(false);
+    setStatusSafe("off");
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    detectorRef.current?.close?.();
+    detectorRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    clearCursor();
+  };
+
+  const labels = {
+    off: "Off",
+    starting: "Starting",
+    searching: "Find your hand",
+    tracking: "Hand detected",
+    pointer: "Pointer mode",
+    scroll: "Scroll mode",
+    error: "Unavailable",
+  };
+
+  return (
+    <section id="air-control" className={"hand-control " + (enabled ? "is-active" : "")}>
+      <video
+        ref={videoRef}
+        className={"hand-control__video " + (cameraVisible ? "is-visible" : "")}
+        playsInline
+        muted
+        aria-label="Camera preview for hand control"
+      />
+      <div className="hand-control__header">
+        <div>
+          <p className="section-label">05 — Air control</p>
+          <h2>Navigate with your hands.</h2>
+          <p className="hand-control__copy">Index = pointer · pinch = click · index + middle = scroll.</p>
+        </div>
+        <div className="hand-control__actions">
+          <button className={"button " + (enabled ? "button--light" : "button--primary")} type="button" onClick={enabled ? stop : start}>
+            {enabled ? "Turn off" : "Enable camera"}
+          </button>
+          {enabled && (
+            <label className="camera-toggle">
+              <input type="checkbox" checked={cameraVisible} onChange={(event) => setCameraVisible(event.target.checked)} />
+              <span>Show camera</span>
+            </label>
+          )}
+        </div>
+      </div>
+      <div className="hand-control__statusbar">
+        <span className={"hand-control__status hand-control__status--" + status}><i /> {labels[status] || "Ready"}</span>
+        <span className="hand-control__hint">Processing stays in your browser.</span>
+      </div>
+      {error && <p className="hand-control__error" role="alert">{error}</p>}
+    </section>
+  );
+}
+
 function Header({ active, onQuickNav }) {
   return (
     <header className="site-header">
@@ -453,6 +712,7 @@ function Contact() {
 
 function App() {
   const [active, setActive] = useState("");
+  const [handStatus, setHandStatus] = useState("off");
   const [quickNav, setQuickNav] = useState(false);
 
   useEffect(() => {
@@ -498,8 +758,14 @@ function App() {
         <Work />
         <About />
         <Skills />
+        <HandControl onStatusChange={setHandStatus} />
         <Contact />
       </main>
+      <div className={"hand-cursor " + (handStatus !== "off" && handStatus !== "error" ? "is-visible" : "")} aria-hidden="true">
+        <span className="hand-cursor__dot" />
+        <span className="hand-cursor__ring" />
+        <span className="hand-cursor__label">{handStatus === "scroll" ? "SCROLL" : "POINT"}</span>
+      </div>
       {quickNav && (
         <div className="quick-nav-backdrop" role="presentation" onClick={() => setQuickNav(false)}>
           <div className="quick-nav" role="dialog" aria-modal="true" aria-labelledby="quick-nav-title" onClick={(event) => event.stopPropagation()}>
