@@ -155,14 +155,14 @@ function makeArt(type) {
   }
 }
 
-function Header() {
+function Header({ activeSection }) {
   return (
     <header className="bar on-blue">
       <a className="bar__home" href="#top">Swaroop Kola</a>
       <nav aria-label="Primary">
-        <a href="#work">Work</a>
-        <a href="#about">About</a>
-        <a href="#contact">Contact</a>
+        <a href="#work" aria-current={activeSection === "work" ? "true" : undefined}>Work</a>
+        <a href="#about" aria-current={activeSection === "about" ? "true" : undefined}>About</a>
+        <a href="#contact" aria-current={activeSection === "contact" ? "true" : undefined}>Contact</a>
       </nav>
     </header>
   );
@@ -462,11 +462,9 @@ function App() {
 
   return (
     <>
-      <a className="skip" href="#work">Skip to selected work</a>
-      <Header />
+      <Header activeSection={active} />
       <main id="top">
         <Hero />
-        <div className={`nav-state ${active ? "has-active" : ""}`} data-active-section={active} aria-hidden="true" />
         <Work />
         <About />
         <Contact />
