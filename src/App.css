@@ -2491,3 +2491,37 @@ main {
     outline-offset: 2px !important;
   }
 }
+
+/* Final hand-control camera placement and gesture states */
+.hand-control__video {
+  position: fixed !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  z-index: 135 !important;
+  width: 220px !important;
+  height: auto !important;
+  margin: 0 !important;
+}
+
+.hand-control__status--click-hold i {
+  background: var(--acid);
+  box-shadow: 0 0 16px rgba(215,255,79,.8);
+}
+
+.hand-control__status--scroll-up i {
+  background: var(--cyan);
+  box-shadow: 0 0 15px rgba(117,230,255,.65);
+}
+
+.hand-control__status--scroll-down i {
+  background: var(--violet);
+  box-shadow: 0 0 15px rgba(154,124,255,.65);
+}
+
+@media (max-width: 720px) {
+  .hand-control__video {
+    right: 10px !important;
+    bottom: 10px !important;
+    width: 165px !important;
+  }
+}
