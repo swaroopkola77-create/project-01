@@ -14,6 +14,7 @@ export default defineConfig([
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
       react.configs.flat.recommended,
+      react.configs.flat['jsx-runtime'],
     ],
     languageOptions: {
       ecmaVersion: 2020,
@@ -27,6 +28,7 @@ export default defineConfig([
     settings: { react: { version: 'detect' } },
     rules: {
       'react/jsx-no-undef': 'error',
+      'react/prop-types': 'off',
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
