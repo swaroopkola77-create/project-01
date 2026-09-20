@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   --bg: #08090d;
@@ -41,7 +41,7 @@ body {
     radial-gradient(circle at 12% 42%, rgba(154, 124, 255, 0.06), transparent 30rem),
     var(--bg);
   color: var(--text);
-  font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -56,7 +56,7 @@ p {
 h1,
 h2,
 h3 {
-  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 h1,
@@ -134,9 +134,9 @@ main {
 .section__intro h2 {
   max-width: 760px;
   margin-top: 0.8rem;
-  font-size: clamp(2.55rem, 5.8vw, 6rem);
+  font-size: clamp(2.25rem, 4.6vw, 4.8rem);
   line-height: 0.95;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.045em;
   font-weight: 600;
 }
 
@@ -282,9 +282,9 @@ main {
 
 .hero h1 {
   max-width: 900px;
-  font-size: clamp(3.6rem, 8.4vw, 8.8rem);
+  font-size: clamp(3.2rem, 6.8vw, 7rem);
   line-height: 0.9;
-  letter-spacing: -0.075em;
+  letter-spacing: -0.055em;
   font-weight: 600;
 }
 
@@ -301,7 +301,7 @@ main {
   max-width: 680px;
   margin-top: 1.9rem;
   color: var(--muted);
-  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  font-size: clamp(1rem, 1.35vw, 1.18rem);
   line-height: 1.65;
 }
 
@@ -597,9 +597,9 @@ main {
 
 .project-card__title {
   display: block;
-  font-size: clamp(1.9rem, 3.8vw, 4.1rem);
+  font-size: clamp(1.75rem, 3vw, 3.2rem);
   line-height: 0.98;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.04em;
   font-weight: 600;
   transition: color 0.2s ease, transform 0.35s var(--ease);
 }
@@ -938,7 +938,7 @@ main {
 
 .about__story-lead {
   max-width: 720px;
-  font-size: clamp(1.8rem, 3.4vw, 3.1rem);
+  font-size: clamp(1.65rem, 2.8vw, 2.6rem);
   line-height: 1.05;
   letter-spacing: -0.05em;
 }
@@ -969,7 +969,7 @@ main {
 
 .stats-grid strong {
   display: block;
-  font-size: clamp(2.2rem, 4vw, 4.6rem);
+  font-size: clamp(2rem, 3.2vw, 3.8rem);
   line-height: 0.95;
   letter-spacing: -0.06em;
 }
@@ -1079,9 +1079,9 @@ main {
 .contact h2 {
   max-width: 900px;
   margin-top: 0.9rem;
-  font-size: clamp(3.7rem, 8.8vw, 9rem);
+  font-size: clamp(3.2rem, 7vw, 7.2rem);
   line-height: 0.88;
-  letter-spacing: -0.075em;
+  letter-spacing: -0.055em;
   font-weight: 600;
 }
 
@@ -1105,7 +1105,7 @@ main {
   max-width: 100%;
   overflow-wrap: anywhere;
   color: var(--text);
-  font-size: clamp(1.2rem, 2.7vw, 2.15rem);
+  font-size: clamp(1.1rem, 2.1vw, 1.75rem);
   letter-spacing: -0.045em;
   text-decoration-color: rgba(215,255,79,.46);
   text-decoration-thickness: 0.08em;
@@ -1360,7 +1360,7 @@ main {
   }
 
   .contact h2 {
-    font-size: clamp(3.45rem, 17vw, 5.2rem);
+    font-size: clamp(3.05rem, 15vw, 4.7rem);
   }
 
   .orbital-scene {
