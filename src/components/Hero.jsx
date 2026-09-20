@@ -1,4 +1,5 @@
-function Hero() {
+import { OrbitalScene } from "./OrbitalScene";
+export function Hero() {
   return (
     <section className="hero" aria-labelledby="hero-title">
       <div className="hero__grid">
