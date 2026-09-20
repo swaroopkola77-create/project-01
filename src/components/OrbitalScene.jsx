@@ -1,4 +1,5 @@
-function OrbitalScene() {
+import { useEffect, useRef } from "react";
+export function OrbitalScene() {
   const sceneRef = useRef(null);
 
   useEffect(() => {
