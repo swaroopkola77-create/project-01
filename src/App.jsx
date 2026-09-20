@@ -267,12 +267,33 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     const targetY = tip.y;
     const dx = targetX - smoothRef.current.x;
     const dy = targetY - smoothRef.current.y;
-    const smoothing = Math.min(0.72, 0.42 + Math.hypot(dx, dy) * 2.0);
-    smoothRef.current.x += dx * smoothing;
-    smoothRef.current.y += dy * smoothing;
 
-    const x = Math.max(10, Math.min(window.innerWidth - 10, smoothRef.current.x * window.innerWidth));
-    const y = Math.max(10, Math.min(window.innerHeight - 10, smoothRef.current.y * window.innerHeight));
+    // Edge-assist: the final 10% of the camera range expands toward the
+    // corresponding viewport edge, making corners easier to reach without
+    // changing the center-area tracking feel.
+    const EDGE_START = 0.90;
+    const expandEdge = (value) => {
+      if (value <= 0.1) return value * 0.65;
+      if (value >= EDGE_START) return 1 - (1 - value) * 0.25;
+      return value;
+    };
+
+    const assistedX = expandEdge(targetX);
+    const assistedY = expandEdge(targetY);
+    const assistedDx = assistedX - smoothRef.current.x;
+    const assistedDy = assistedY - smoothRef.current.y;
+    const smoothing = Math.min(
+      0.82,
+      0.46 + Math.hypot(assistedDx, assistedDy) * 2.4
+    );
+
+    smoothRef.current.x += assistedDx * smoothing;
+    smoothRef.current.y += assistedDy * smoothing;
+
+    // Hard clamp to the viewport so the pointer never gets stranded short
+    // of a boundary because of smoothing.
+    const x = Math.max(0, Math.min(window.innerWidth - 1, smoothRef.current.x * window.innerWidth));
+    const y = Math.max(0, Math.min(window.innerHeight - 1, smoothRef.current.y * window.innerHeight));
     setCursor(x, y, gestureType);
 
     if (gestureType === "pointer" || gestureType === "click-hold") {
