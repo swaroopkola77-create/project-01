@@ -1,4 +1,4 @@
-function ProjectCard({ project, isOpen, onToggle }) {
+export function ProjectCard({ project, isOpen, onToggle }) {
   return (
     <article className={"project-card project-card--" + project.accent + (isOpen ? " is-open" : "")}>
       <button
