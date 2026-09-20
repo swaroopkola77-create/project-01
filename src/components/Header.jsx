@@ -1,4 +1,5 @@
-function Header({ active, onQuickNav }) {
+import React from "react";
+export function Header({ active, onQuickNav }) {
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="Swaroop Kola home">
