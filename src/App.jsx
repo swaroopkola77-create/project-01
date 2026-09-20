@@ -882,7 +882,7 @@ function App() {
         <HandControl onStatusChange={setHandStatus} />
         <Contact />
       </main>
-      <div className={"hand-cursor " + (handStatus !== "off" && handStatus !== "error" ? "is-visible" : "")} aria-hidden="true">
+      <div className="hand-cursor" aria-hidden="true">
         <span className="hand-cursor__dot" />
         <span className="hand-cursor__ring" />
         <span className="hand-cursor__label">{handStatus === "scroll" ? "SCROLL" : "POINT"}</span>
