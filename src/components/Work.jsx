@@ -1,4 +1,7 @@
-function Work() {
+import { useState } from "react";
+import { PROJECTS } from "../data/portfolio";
+import { ProjectCard } from "./ProjectCard";
+export function Work() {
   const [open, setOpen] = useState("ai-cell-scanner");
   const [filter, setFilter] = useState("All");
   const filters = ["All", "AI / ML", "Frontend", "Product"];
