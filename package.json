@@ -8,8 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "npm run lint && npm run build",
-    "test:gesture": "node tests/gesture.test.mjs"
+    "check": "npm run lint && npm run test:gesture && npm run build",
+    "test:gesture": "node tests/gesture.test.mjs",
+    "test": "npm run test:gesture"
   },
   "dependencies": {
     "react": "^19.2.0",
