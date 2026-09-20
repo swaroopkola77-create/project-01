@@ -101,48 +101,6 @@ function rootClickPulse() {
   }, 180);
 }
 
-const HAND_LANDMARKER_MODULE_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm";
-const HAND_LANDMARKER_WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm";
-const HAND_LANDMARKER_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
-
-function distance2d(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function fingerExtended(lm, tip, pip, mcp) {
-  const wrist = lm[0];
-  return distance2d(wrist, lm[tip]) > distance2d(wrist, lm[pip]) * 1.12 &&
-    angleAt(lm[tip], lm[pip], lm[mcp]) > 145;
-}
-
-function angleAt(a, b, c) {
-  const abx = a.x - b.x;
-  const aby = a.y - b.y;
-  const cbx = c.x - b.x;
-  const cby = c.y - b.y;
-  const dot = abx * cbx + aby * cby;
-  const mag = Math.hypot(abx, aby) * Math.hypot(cbx, cby);
-  if (!mag) return 0;
-  return Math.acos(Math.max(-1, Math.min(1, dot / mag))) * 180 / Math.PI;
-}
-
-function detectHandMode(lm) {
-  const index = fingerExtended(lm, 8, 6, 5);
-  const middle = fingerExtended(lm, 12, 10, 9);
-  const ring = fingerExtended(lm, 16, 14, 13);
-  const pinky = fingerExtended(lm, 20, 18, 17);
-  if (index && middle && !ring && !pinky) return "scroll";
-  if (index && !middle && !ring && !pinky) return "pointer";
-  return "idle";
-}
-
-function rootClickPulse() {
-  document.documentElement.style.setProperty("--hand-cursor-pulse", "1");
-  window.setTimeout(() => {
-    document.documentElement.style.setProperty("--hand-cursor-pulse", "0");
-  }, 180);
-}
-
 function distance2d(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
@@ -441,6 +399,7 @@ function HandControl({ onStatusChange }) {
     </section>
   );
 }
+
 
 function App() {
   const [active, setActive] = useState("");
