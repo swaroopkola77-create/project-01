@@ -108,17 +108,14 @@ function angleAt(a, b, c) {
 }
 
 function fingerExtended(lm, tip, pip, mcp) {
-  const palm = Math.max(0.001, distance2d(lm[0], lm[mcp]));
-  const reach = distance2d(lm[0], lm[tip]) / palm;
-  const straight = angleAt(lm[tip], lm[pip], lm[mcp]);
-  return reach > 1.22 && straight > 132;
+  return distance2d(lm[0], lm[tip]) > distance2d(lm[0], lm[pip]) * 1.05 &&
+    angleAt(lm[tip], lm[pip], lm[mcp]) > 128;
 }
 
 function thumbOpen(lm) {
   const palmWidth = Math.max(0.001, distance2d(lm[5], lm[17]));
-  const reach = distance2d(lm[4], lm[5]) / palmWidth;
-  const angle = angleAt(lm[4], lm[3], lm[2]);
-  return reach > 0.62 && angle > 108;
+  return distance2d(lm[4], lm[5]) / palmWidth > 0.58 &&
+    angleAt(lm[4], lm[3], lm[2]) > 105;
 }
 
 function classifyGesture(lm, previous = "neutral") {
@@ -129,28 +126,16 @@ function classifyGesture(lm, previous = "neutral") {
     little: fingerExtended(lm, 20, 18, 17),
   };
   const thumb = thumbOpen(lm);
+  const count = Object.values(fingers).filter(Boolean).length;
 
-  if (!fingers.index && !fingers.middle && !fingers.ring && !fingers.little) {
-    return { type: "pause", thumb };
-  }
-
-  if (fingers.index && fingers.middle && fingers.ring && fingers.little) {
-    return { type: "scroll-down", thumb };
-  }
-
-  if (fingers.index && fingers.middle && fingers.ring && !fingers.little) {
-    return { type: "scroll-up", thumb };
-  }
-
+  if (count === 0 || (count === 4 && thumb)) return { type: "pause", thumb };
+  if (count === 4) return { type: "scroll-down", thumb };
+  if (fingers.index && fingers.middle && fingers.ring && !fingers.little) return { type: "scroll-up", thumb };
   if (fingers.index && !fingers.middle && !fingers.ring && !fingers.little) {
     return { type: thumb ? "click-hold" : "pointer", thumb };
   }
 
-  // Ambiguous intermediate poses retain the prior stable gesture. This is
-  // especially important when moving between 3 and 4 fingers.
-  return previous !== "neutral"
-    ? { type: previous, thumb, uncertain: true }
-    : { type: "neutral", thumb, uncertain: true };
+  return previous !== "neutral" ? { type: previous, thumb, uncertain: true } : { type: "neutral", thumb };
 }
 
 function getInteractiveTarget(x, y) {
