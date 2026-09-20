@@ -11,7 +11,7 @@ const PROJECTS = [
     result: "Alerts reach 14,000 households 40 minutes earlier",
     description:
       "Fishing communities along the coast get storm warnings too late and in the wrong language. Tidewatch turns forecast data into one plain alert, spoken aloud in the local language, that still works without a signal.",
-    href: "#",
+    href: "#work",
     art: "tidewatch",
   },
   {
@@ -24,7 +24,7 @@ const PROJECTS = [
     result: "Review rounds dropped from five to two on average",
     description:
       "Editors and authors kept leaving feedback in email. Quire puts every comment beside the sentence it's about, and keeps a full history so nothing is lost when two people edit at once.",
-    href: "#",
+    href: "#work",
     art: "quire",
   },
   {
@@ -37,7 +37,7 @@ const PROJECTS = [
     result: "2,300 swaps in the first growing season",
     description:
       "Gardeners already trade seeds over fences and in group chats. Marigold makes that easier to find, with listings that show what grows well nearby and a swap that takes two taps.",
-    href: "#",
+    href: "#work",
     art: "marigold",
   },
   {
@@ -50,7 +50,7 @@ const PROJECTS = [
     result: "Embedded by two regional newsrooms",
     description:
       "A commuter's question is simple: is my line running late right now? Lineup answers it with one moving picture instead of a table of timestamps, and refreshes every fifteen seconds.",
-    href: "#",
+    href: "#work",
     art: "lineup",
   },
   {
@@ -63,7 +63,7 @@ const PROJECTS = [
     result: "Open source, 1,900 stars on GitHub",
     description:
       "Type specimens are usually static. Kerning Club lets you drag every axis of a font, pair it with another, and export the exact CSS you ended up with.",
-    href: "#",
+    href: "#work",
     art: "kerning",
   },
 ];
@@ -233,13 +233,16 @@ function Hero() {
     hero.addEventListener("pointermove", onMove);
     hero.addEventListener("pointerleave", onLeave);
 
+    let cancelled = false;
     Promise.resolve(document.fonts?.ready).then(() => {
+      if (cancelled) return;
       ready = true;
       introStart = performance.now();
       schedule();
     });
 
     return () => {
+      cancelled = true;
       hero.removeEventListener("pointermove", onMove);
       hero.removeEventListener("pointerleave", onLeave);
       if (frame) cancelAnimationFrame(frame);
@@ -330,11 +333,12 @@ function Work() {
       return;
     }
     const w = Math.min(352, window.innerWidth * 0.34);
+    const h = w * 0.75;
     targetRef.current = {
-      x: Math.min(event.clientX + 28, window.innerWidth - w - 16),
-      y: Math.max(72, Math.min(event.clientY - 112, window.innerHeight - 184)),
+      x: Math.max(16, Math.min(event.clientX + 28, window.innerWidth - w - 16)),
+      y: Math.max(72, Math.min(event.clientY - h / 2, window.innerHeight - h - 16)),
     };
-    setPeek((current) => ({ project, x: targetRef.current.x, y: targetRef.current.y }));
+    setPeek((current) => ({ ...current, project, x: targetRef.current.x, y: targetRef.current.y }));
   };
 
   return (
