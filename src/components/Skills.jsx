@@ -1,4 +1,5 @@
-function Skills() {
+import { SKILLS } from "../data/portfolio";
+export function Skills() {
   return (
     <section id="skills" className="skills section">
       <div className="section__intro">
