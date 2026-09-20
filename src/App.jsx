@@ -1,476 +1,427 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const PROJECTS = [
   {
-    id: "tidewatch",
-    title: "Tidewatch",
-    what: "Flood alerts for fishing villages",
+    id: "ai-cell-scanner",
+    number: "01",
+    title: "AI Cell Scanner",
+    category: "Computer Vision",
     year: "2026",
-    role: "Lead design engineer",
-    builtWith: "React Native, MapLibre, SQLite",
-    result: "Alerts reach 14,000 households 40 minutes earlier",
+    summary: "A portfolio-grade microscopy concept for classifying cells from high-resolution images.",
     description:
-      "Fishing communities along the coast get storm warnings too late and in the wrong language. Tidewatch turns forecast data into one plain alert, spoken aloud in the local language, that still works without a signal.",
-    href: "#work",
-    art: "tidewatch",
+      "A visual workflow for uploading microscopy images, exploring regions of interest, reviewing model predictions, and surfacing confidence without hiding the underlying image.",
+    stack: ["Python", "OpenCV", "React", "ML"],
+    metrics: ["Image upload", "Region explorer", "Confidence UI"],
+    accent: "cyan",
   },
   {
-    id: "quire",
-    title: "Quire",
-    what: "Writing software with margin comments",
+    id: "smart-agri",
+    number: "02",
+    title: "Smart Agri Console",
+    category: "AI + IoT",
+    year: "2026",
+    summary: "A dashboard concept connecting crop signals, sensors, and actionable field insights.",
+    description:
+      "A product concept for precision agriculture where weather, soil, crop health, and field events come together in one decision surface.",
+    stack: ["React", "Python", "IoT", "Data"],
+    metrics: ["Field health", "Sensor feed", "Action queue"],
+    accent: "lime",
+  },
+  {
+    id: "quiz-lab",
+    number: "03",
+    title: "Quiz Lab",
+    category: "Web Application",
     year: "2025",
-    role: "Front-end lead, team of four",
-    builtWith: "TypeScript, ProseMirror, Yjs",
-    result: "Review rounds dropped from five to two on average",
+    summary: "An interactive quiz experience built to practice React state, lists, and reusable UI.",
     description:
-      "Editors and authors kept leaving feedback in email. Quire puts every comment beside the sentence it's about, and keeps a full history so nothing is lost when two people edit at once.",
-    href: "#work",
-    art: "quire",
+      "A focused front-end project that combines question flows, score states, progress feedback, and responsive components into a clean learning experience.",
+    stack: ["React", "JavaScript", "CSS"],
+    metrics: ["Dynamic state", "Responsive UI", "Reusable components"],
+    accent: "violet",
   },
   {
-    id: "marigold",
-    title: "Marigold",
-    what: "Seed swaps for community gardens",
+    id: "job-board",
+    number: "04",
+    title: "Job Board",
+    category: "Product UI",
     year: "2025",
-    role: "Design and development",
-    builtWith: "Next.js, Postgres, MapLibre",
-    result: "2,300 swaps in the first growing season",
+    summary: "A searchable job discovery interface designed around clarity and fast scanning.",
     description:
-      "Gardeners already trade seeds over fences and in group chats. Marigold makes that easier to find, with listings that show what grows well nearby and a swap that takes two taps.",
-    href: "#work",
-    art: "marigold",
+      "A product-style interface exploring search, filtering, job cards, saved states, and information hierarchy for a practical recruitment workflow.",
+    stack: ["React", "JavaScript", "CSS"],
+    metrics: ["Search", "Filters", "Card system"],
+    accent: "orange",
   },
   {
-    id: "lineup",
-    title: "Lineup",
-    what: "Metro delays as a living map",
-    year: "2024",
-    role: "Design and development",
-    builtWith: "D3, WebGL, server-sent events",
-    result: "Embedded by two regional newsrooms",
+    id: "ecommerce-ui",
+    number: "05",
+    title: "E-commerce UI",
+    category: "Frontend",
+    year: "2025",
+    summary: "A responsive storefront interface built to strengthen component and layout skills.",
     description:
-      "A commuter's question is simple: is my line running late right now? Lineup answers it with one moving picture instead of a table of timestamps, and refreshes every fifteen seconds.",
-    href: "#work",
-    art: "lineup",
-  },
-  {
-    id: "kerning",
-    title: "Kerning Club",
-    what: "A playground for variable fonts",
-    year: "2023",
-    role: "Solo project",
-    builtWith: "Svelte, Canvas, CSS font variations",
-    result: "Open source, 1,900 stars on GitHub",
-    description:
-      "Type specimens are usually static. Kerning Club lets you drag every axis of a font, pair it with another, and export the exact CSS you ended up with.",
-    href: "#work",
-    art: "kerning",
+      "A frontend build focused on product grids, responsive navigation, reusable components, and a visual hierarchy that keeps browsing friction low.",
+    stack: ["React", "Tailwind CSS", "JavaScript"],
+    metrics: ["Responsive grid", "Reusable UI", "Mobile-first"],
+    accent: "pink",
   },
 ];
 
-const C = {
-  blue: "#2334D0",
-  mid: "#5468F0",
-  sky: "#A9B8FF",
-  butter: "#FFE27A",
-  cream: "#FFF3B8",
-  chalk: "#F3F4FA",
-  ink: "#0E1235",
-  rose: "#FFC2D1",
-};
+const SKILLS = [
+  { label: "Python", group: "Languages", level: "Core" },
+  { label: "C++", group: "Languages", level: "Core" },
+  { label: "JavaScript", group: "Languages", level: "Core" },
+  { label: "React", group: "Frontend", level: "Core" },
+  { label: "HTML / CSS", group: "Frontend", level: "Core" },
+  { label: "Tailwind CSS", group: "Frontend", level: "Working" },
+  { label: "Node.js", group: "Backend", level: "Learning" },
+  { label: "SQL / DBMS", group: "Data", level: "Learning" },
+  { label: "Git / GitHub", group: "Tools", level: "Core" },
+  { label: "OpenCV", group: "AI / ML", level: "Exploring" },
+  { label: "GenAI", group: "AI / ML", level: "Exploring" },
+  { label: "DSA", group: "Problem Solving", level: "Core" },
+];
 
-const svg = (inner) =>
-  `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
-
-function makeArt(type) {
-  switch (type) {
-    case "tidewatch":
-      return svg(`
-        <rect width="400" height="300" fill="${C.butter}"/>
-        <circle cx="292" cy="92" r="46" fill="${C.cream}"/>
-        <path d="M0 170 C60 140 110 200 180 170 S320 140 400 170 V300 H0Z" fill="${C.sky}"/>
-        <path d="M0 200 C70 172 120 230 200 200 S330 176 400 204 V300 H0Z" fill="${C.mid}"/>
-        <path d="M0 236 C80 210 130 262 210 236 S340 214 400 240 V300 H0Z" fill="${C.blue}"/>
-      `);
-    case "quire":
-      return svg(`
-        <rect width="400" height="300" fill="${C.sky}"/>
-        <rect x="64" y="38" width="210" height="224" rx="8" fill="${C.chalk}"/>
-        <rect x="88" y="68" width="150" height="8" rx="4" fill="${C.ink}"/>
-        <rect x="88" y="90" width="162" height="8" rx="4" fill="${C.ink}"/>
-        <rect x="84" y="108" width="126" height="20" rx="4" fill="${C.butter}"/>
-        <rect x="88" y="114" width="118" height="8" rx="4" fill="${C.ink}"/>
-        <rect x="88" y="138" width="158" height="8" rx="4" fill="${C.ink}"/>
-        <rect x="88" y="160" width="110" height="8" rx="4" fill="${C.ink}"/>
-        <rect x="88" y="190" width="150" height="8" rx="4" fill="${C.ink}"/>
-        <rect x="88" y="212" width="132" height="8" rx="4" fill="${C.ink}"/>
-        <path d="M214 118 H292" stroke="${C.blue}" stroke-width="2" stroke-dasharray="4 4"/>
-        <rect x="292" y="92" width="92" height="60" rx="10" fill="${C.blue}"/>
-        <rect x="304" y="106" width="60" height="6" rx="3" fill="${C.chalk}"/>
-        <rect x="304" y="120" width="42" height="6" rx="3" fill="${C.chalk}"/>
-        <rect x="304" y="134" width="52" height="6" rx="3" fill="${C.chalk}" opacity=".6"/>
-        <rect x="292" y="172" width="92" height="46" rx="10" fill="${C.butter}"/>
-        <rect x="304" y="186" width="60" height="6" rx="3" fill="${C.ink}"/>
-        <rect x="304" y="200" width="36" height="6" rx="3" fill="${C.ink}"/>
-      `);
-    case "marigold": {
-      let petals = "";
-      for (let i = 0; i < 14; i++) {
-        petals += `<ellipse cx="0" cy="-58" rx="17" ry="52" fill="${i % 2 ? C.butter : C.cream}" transform="rotate(${(i * 360) / 14})"/>`;
-      }
-      return svg(`
-        <rect width="400" height="300" fill="${C.ink}"/>
-        <g transform="translate(200 150) scale(.95)">
-          ${petals}
-          <circle r="26" fill="${C.ink}"/>
-          <circle r="10" fill="${C.sky}"/>
-        </g>
-      `);
-    }
-    case "lineup": {
-      const lengths = [210, 280, 150, 320, 240, 180, 300, 120, 260, 200];
-      const late = [1, 3, 6];
-      const rows = lengths
-        .map((len, i) => {
-          const y = 36 + i * 26;
-          return `<rect x="40" y="${y - 3}" width="${len}" height="6" rx="3" fill="${C.chalk}" opacity=".85"/><circle cx="${40 + len + 14}" cy="${y}" r="7" fill="${late.includes(i) ? C.butter : C.sky}"/>`;
-        })
-        .join("");
-      return svg(`<rect width="400" height="300" fill="${C.blue}"/>${rows}`);
-    }
-    case "kerning":
-      return svg(`
-        <rect width="400" height="300" fill="${C.rose}"/>
-        <g stroke="${C.ink}" stroke-width="1.5" opacity=".35">
-          <line x1="24" y1="88" x2="376" y2="88"/>
-          <line x1="24" y1="128" x2="376" y2="128"/>
-          <line x1="24" y1="222" x2="376" y2="222"/>
-          <line x1="24" y1="262" x2="376" y2="262"/>
-        </g>
-        <text x="200" y="222" text-anchor="middle" font-size="190" font-weight="800"
-          font-family="'Bricolage Grotesque', Helvetica, Arial, sans-serif" fill="${C.blue}">Ag</text>
-      `);
-    default:
-      return "";
-  }
-}
-
-function Header({ activeSection }) {
+function Header({ active }) {
   return (
-    <header className="bar on-blue">
-      <a className="bar__home" href="#top">Swaroop Kola</a>
-      <nav aria-label="Primary">
-        <a href="#work" aria-current={activeSection === "work" ? "true" : undefined}>Work</a>
-        <a href="#about" aria-current={activeSection === "about" ? "true" : undefined}>About</a>
-        <a href="#contact" aria-current={activeSection === "contact" ? "true" : undefined}>Contact</a>
+    <header className="site-header">
+      <a className="brand" href="#top" aria-label="Swaroop Kola home">
+        <span className="brand__mark">SK</span>
+        <span>Swaroop Kola</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        {[
+          ["work", "Work"],
+          ["about", "About"],
+          ["skills", "Skills"],
+          ["contact", "Contact"],
+        ].map(([id, label]) => (
+          <a key={id} href={"#" + id} aria-current={active === id ? "true" : undefined}>
+            {label}
+          </a>
+        ))}
       </nav>
+      <a className="header-cta" href="#contact">Let's build ↗</a>
     </header>
   );
 }
 
-function Hero() {
-  const heroRef = useRef(null);
-  const nameRef = useRef(null);
+function OrbitalScene() {
+  const sceneRef = useRef(null);
 
   useEffect(() => {
-    const hero = heroRef.current;
-    const name = nameRef.current;
-    if (!hero || !name || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const scene = sceneRef.current;
+    if (!scene || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const BASE = 560, PEAK = 800, START = 200;
-    const chars = [];
-
-    name.querySelectorAll(".name__line").forEach((line) => {
-      const text = line.textContent.trim();
-      line.textContent = "";
-      for (const ch of text) {
-        const el = document.createElement("span");
-        el.className = "char";
-        el.textContent = ch === " " ? "\u00a0" : ch;
-        el.style.setProperty("--w", START);
-        line.append(el);
-        chars.push({ el, weight: START, delay: 250 + chars.length * 90 });
-      }
-    });
-
-    let pointer = null;
     let frame = null;
-    let ready = false;
-    let introStart = 0;
+    let target = { x: 0, y: 0 };
+    let current = { x: 0, y: 0 };
 
-    const schedule = () => {
-      if (ready && frame === null) frame = requestAnimationFrame(tick);
+    const move = (event) => {
+      const rect = scene.getBoundingClientRect();
+      target = {
+        x: (event.clientX - rect.left) / rect.width - 0.5,
+        y: (event.clientY - rect.top) / rect.height - 0.5,
+      };
+      if (!frame) frame = requestAnimationFrame(render);
     };
 
-    function tick(now) {
-      frame = null;
-      let animating = false;
-      const rects = pointer ? chars.map((c) => c.el.getBoundingClientRect()) : null;
-      const radius = Math.max(200, name.getBoundingClientRect().width * 0.32);
+    const leave = () => {
+      target = { x: 0, y: 0 };
+      if (!frame) frame = requestAnimationFrame(render);
+    };
 
-      chars.forEach((c, i) => {
-        if (now - introStart < c.delay) { animating = true; return; }
-        let target = BASE;
-        if (pointer) {
-          const r = rects[i];
-          const d = Math.hypot(pointer.x - (r.left + r.width / 2), pointer.y - (r.top + r.height / 2));
-          const k = Math.max(0, 1 - d / radius);
-          target = BASE + (PEAK - BASE) * k * k;
-        }
-        const diff = target - c.weight;
-        if (Math.abs(diff) > 0.4) {
-          c.weight += diff * (pointer ? 0.2 : 0.07);
-          animating = true;
-        } else c.weight = target;
-        c.el.style.setProperty("--w", c.weight.toFixed(1));
-      });
+    const render = () => {
+      current.x += (target.x - current.x) * 0.08;
+      current.y += (target.y - current.y) * 0.08;
+      scene.style.setProperty("--px", current.x.toFixed(3));
+      scene.style.setProperty("--py", current.y.toFixed(3));
+      scene.style.setProperty("--rx", (current.y * -8).toFixed(2) + "deg");
+      scene.style.setProperty("--ry", (current.x * 10).toFixed(2) + "deg");
+      frame = Math.abs(target.x - current.x) > 0.002 || Math.abs(target.y - current.y) > 0.002
+        ? requestAnimationFrame(render)
+        : null;
+    };
 
-      if (animating || pointer) frame = requestAnimationFrame(tick);
-    }
-
-    const onMove = (e) => { pointer = { x: e.clientX, y: e.clientY }; schedule(); };
-    const onLeave = () => { pointer = null; schedule(); };
-    hero.addEventListener("pointermove", onMove);
-    hero.addEventListener("pointerleave", onLeave);
-
-    let cancelled = false;
-    Promise.resolve(document.fonts?.ready).then(() => {
-      if (cancelled) return;
-      ready = true;
-      introStart = performance.now();
-      schedule();
-    });
+    scene.addEventListener("pointermove", move);
+    scene.addEventListener("pointerleave", leave);
 
     return () => {
-      cancelled = true;
-      hero.removeEventListener("pointermove", onMove);
-      hero.removeEventListener("pointerleave", onLeave);
+      scene.removeEventListener("pointermove", move);
+      scene.removeEventListener("pointerleave", leave);
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
   return (
-    <section ref={heroRef} className="hero on-blue" aria-label="Introduction">
-      <h1 ref={nameRef} className="name" aria-label="Swaroop Kola">
-        <span className="name__line" aria-hidden="true">Swaroop</span>
-        <span className="name__line" aria-hidden="true">Kola</span>
-      </h1>
-      <div className="hero__foot">
-        <p className="lede">
-          I'm a CSE AI/ML student building thoughtful software, practical AI projects,
-          and interfaces that make technical ideas easier to use.
-        </p>
-        <p className="status"><span className="status__dot" aria-hidden="true"></span>Open to internships and collaborative projects</p>
+    <div ref={sceneRef} className="orbital-scene" aria-hidden="true">
+      <div className="orbital-scene__halo" />
+      <div className="orbital-scene__ring orbital-scene__ring--one" />
+      <div className="orbital-scene__ring orbital-scene__ring--two" />
+      <div className="orbital-scene__ring orbital-scene__ring--three" />
+      <div className="orbital-scene__core">
+        <div className="orbital-scene__core-face">AI</div>
+      </div>
+      <span className="orbit-dot orbit-dot--one" />
+      <span className="orbit-dot orbit-dot--two" />
+      <span className="orbit-dot orbit-dot--three" />
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <section className="hero" aria-labelledby="hero-title">
+      <div className="hero__grid">
+        <div className="hero__copy">
+          <p className="eyebrow"><span className="eyebrow__pulse" /> CSE AI/ML • Hyderabad</p>
+          <h1 id="hero-title">
+            Building <span className="hero__gradient">intelligent</span> interfaces for real-world problems.
+          </h1>
+          <p className="hero__lead">
+            I’m Swaroop Kola — a student developer exploring software engineering, AI/ML, and product design through ambitious, practical projects.
+          </p>
+          <div className="hero__actions">
+            <a className="button button--primary" href="#work">Explore my work <span>↓</span></a>
+            <a className="button button--ghost" href="#contact">Start a conversation ↗</a>
+          </div>
+          <div className="hero__meta">
+            <div><span>Current focus</span><strong>AI + Full-stack</strong></div>
+            <div><span>Building with</span><strong>Python · C++ · React</strong></div>
+            <div><span>Open to</span><strong>Internships + Projects</strong></div>
+          </div>
+        </div>
+        <OrbitalScene />
+      </div>
+      <div className="hero__ticker" aria-hidden="true">
+        <span>SOFTWARE ENGINEERING</span><span>•</span><span>AI / ML</span><span>•</span><span>PRODUCT THINKING</span><span>•</span><span>BUILD • LEARN • SHIP</span>
       </div>
     </section>
   );
 }
 
-function Project({ project, isOpen, onToggle, onHover }) {
+function ProjectCard({ project, isOpen, onToggle }) {
   return (
-    <li className={`project ${isOpen ? "is-open" : ""}`} data-art={project.art}>
-      <h3 className="project__head">
-        <button
-          className="project__trigger"
-          id={`t-${project.id}`}
-          aria-expanded={isOpen}
-          aria-controls={`p-${project.id}`}
-          onClick={onToggle}
-          onPointerEnter={onHover}
-          onPointerMove={onHover}
-          onPointerLeave={() => onHover(null)}
-        >
-          <span className="project__title">{project.title}</span>
-          <span className="project__what">{project.what}</span>
-          <span className="project__year">{project.year}</span>
-          <span className="project__icon" aria-hidden="true"></span>
-        </button>
-      </h3>
-      <div className="project__panel" id={`p-${project.id}`} role="region" aria-labelledby={`t-${project.id}`}>
-        <div className="project__inner">
-          <div className="project__content">
-            <div className="project__art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: makeArt(project.art) }} />
-            <div className="project__body">
-              <p>{project.description}</p>
-              <dl>
-                <div><dt>Role</dt><dd>{project.role}</dd></div>
-                <div><dt>Built with</dt><dd>{project.builtWith}</dd></div>
-                <div><dt>Result</dt><dd>{project.result}</dd></div>
-              </dl>
-              <a className="link" href={project.href}>View project</a>
-            </div>
+    <article className={"project-card project-card--" + project.accent + (isOpen ? " is-open" : "")}>
+      <button className="project-card__toggle" type="button" onClick={onToggle} aria-expanded={isOpen}>
+        <span className="project-card__number">{project.number}</span>
+        <span className="project-card__main">
+          <span className="project-card__category">{project.category}</span>
+          <span className="project-card__title">{project.title}</span>
+          <span className="project-card__summary">{project.summary}</span>
+        </span>
+        <span className="project-card__year">{project.year}</span>
+        <span className="project-card__icon" aria-hidden="true">+</span>
+      </button>
+
+      <div className="project-card__details">
+        <div className="project-card__visual">
+          <div className="project-visual-grid" />
+          <div className="project-visual-core">
+            <span>{project.number}</span>
+            <strong>{project.category}</strong>
           </div>
+          <div className="project-visual-chip project-visual-chip--a">{project.stack[0]}</div>
+          <div className="project-visual-chip project-visual-chip--b">{project.stack[1]}</div>
+          <div className="project-visual-chip project-visual-chip--c">{project.stack.at(-1)}</div>
+        </div>
+        <div className="project-card__content">
+          <p>{project.description}</p>
+          <div className="project-card__stack">
+            {project.stack.map((item) => <span key={item}>{item}</span>)}
+          </div>
+          <div className="project-card__metrics">
+            {project.metrics.map((metric) => <div key={metric}><span>+</span>{metric}</div>)}
+          </div>
+          <a className="text-link" href="#contact">Discuss this project ↗</a>
         </div>
       </div>
-    </li>
+    </article>
   );
 }
 
 function Work() {
-  const [openId, setOpenId] = useState(null);
-  const [peek, setPeek] = useState({ project: null, x: 0, y: 0 });
-  const rafRef = useRef(null);
-  const targetRef = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (!peek.project || window.matchMedia("(hover: none), (pointer: coarse)").matches) return undefined;
-    const animate = () => {
-      setPeek((current) => {
-        const dx = targetRef.current.x - current.x;
-        const dy = targetRef.current.y - current.y;
-        const next = { ...current, x: current.x + dx * 0.18, y: current.y + dy * 0.18 };
-        rafRef.current = Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3 ? requestAnimationFrame(animate) : null;
-        return next;
-      });
-    };
-    rafRef.current = requestAnimationFrame(animate);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [peek.project]);
-
-  const handleHover = (project, event) => {
-    if (!event || window.matchMedia("(hover: none), (pointer: coarse)").matches || openId === project?.id) {
-      setPeek((p) => ({ ...p, project: null }));
-      return;
-    }
-    const w = Math.min(352, window.innerWidth * 0.34);
-    const h = w * 0.75;
-    targetRef.current = {
-      x: Math.max(16, Math.min(event.clientX + 28, window.innerWidth - w - 16)),
-      y: Math.max(72, Math.min(event.clientY - h / 2, window.innerHeight - h - 16)),
-    };
-    setPeek((current) => ({ ...current, project, x: targetRef.current.x, y: targetRef.current.y }));
-  };
+  const [open, setOpen] = useState("ai-cell-scanner");
 
   return (
-    <section id="work" className="work" aria-labelledby="work-title">
-      <div className="wrap">
-        <div className="section-head">
-          <h2 id="work-title">Selected work</h2>
-          <p>Five projects adapted from the supplied portfolio concept into a React-powered showcase.</p>
+    <section id="work" className="work section">
+      <div className="section__intro">
+        <div>
+          <p className="section-label">01 — Selected work</p>
+          <h2>Projects that move from <em>idea</em> to interface.</h2>
         </div>
-        <ul className="index">
-          {PROJECTS.map((project) => (
-            <Project
-              key={project.id}
-              project={project}
-              isOpen={openId === project.id}
-              onToggle={() => {
-                const next = openId === project.id ? null : project.id;
-                setOpenId(next);
-                setPeek((p) => ({ ...p, project: null }));
-                if (next) {
-                  window.setTimeout(() => {
-                    document.getElementById(`p-${project.id}`)?.scrollIntoView({
-                      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-                      block: "nearest",
-                    });
-                  }, 520);
-                }
-              }}
-              onHover={(event) => handleHover(project, event)}
-            />
-          ))}
-        </ul>
+        <p className="section__intro-copy">
+          A mix of learning projects, product experiments, and future-facing concepts. Some are exploratory — the goal is to show how I think, build, and communicate.
+        </p>
       </div>
-      <div
-        className={`peek ${peek.project ? "is-on" : ""}`}
-        aria-hidden="true"
-        style={{ transform: `translate3d(${peek.x}px, ${peek.y}px, 0)` }}
-        dangerouslySetInnerHTML={{ __html: peek.project ? makeArt(peek.project.art) : "" }}
-      />
+
+      <div className="project-list">
+        {PROJECTS.map((project) => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            isOpen={open === project.id}
+            onToggle={() => setOpen(open === project.id ? null : project.id)}
+          />
+        ))}
+      </div>
     </section>
   );
 }
 
 function About() {
   return (
-    <section id="about" className="about" aria-labelledby="about-title">
-      <div className="wrap about__grid">
-        <h2 id="about-title">About</h2>
-        <div className="about__text">
-          <p className="about__lead">I'm building toward a career where software engineering, AI/ML, and product thinking meet.</p>
-          <p>I like work where the details carry weight: clear interfaces, reliable systems, and projects that turn complicated technology into something useful.</p>
-          <p>My current toolkit includes Python, C++, JavaScript, React, backend fundamentals, databases, DSA, and AI/ML concepts, with a strong interest in agritech, automation, and intelligent products.</p>
+    <section id="about" className="about section">
+      <div className="section__intro">
+        <div>
+          <p className="section-label">02 — About me</p>
+          <h2>Curious by default. <em>Practical</em> by choice.</h2>
+        </div>
+        <p className="section__intro-copy">
+          I’m building a strong foundation across software engineering and AI while learning how to turn technical ideas into experiences people can actually use.
+        </p>
+      </div>
+
+      <div className="about__grid">
+        <div className="about__manifesto">
+          <div className="manifesto-card manifesto-card--dark">
+            <span>01</span>
+            <strong>Learn deeply</strong>
+            <p>Understand the fundamentals behind the tools, not only the syntax around them.</p>
+          </div>
+          <div className="manifesto-card manifesto-card--light">
+            <span>02</span>
+            <strong>Build often</strong>
+            <p>Turn concepts into working interfaces, applications, and experiments as quickly as possible.</p>
+          </div>
+          <div className="manifesto-card manifesto-card--acid">
+            <span>03</span>
+            <strong>Make it useful</strong>
+            <p>Prefer projects that solve a real user problem over demos that only look impressive.</p>
+          </div>
+        </div>
+
+        <div className="about__story">
+          <p className="about__story-lead">
+            I’m a CSE AI/ML student building toward a career at the intersection of software, intelligent systems, and entrepreneurship.
+          </p>
+          <div className="about__story-columns">
+            <p>I enjoy the full loop: understanding a problem, designing the interface, writing the code, debugging the edge cases, and refining the experience.</p>
+            <p>Right now I’m sharpening DSA in C++, strengthening React and backend fundamentals, and exploring computer vision, GenAI, and intelligent products.</p>
+          </div>
         </div>
       </div>
-      <div className="wrap">
-        <h3 className="timeline__title">Current learning path</h3>
-        <ol className="timeline">
-          <li><span className="timeline__years">Now</span><div><p className="timeline__role">CSE AI/ML student</p><p className="timeline__note">Building a stronger foundation across software development, data structures, AI/ML and practical projects.</p></div></li>
-          <li><span className="timeline__years">Core stack</span><div><p className="timeline__role">Python · C++ · JavaScript · React</p><p className="timeline__note">Balancing problem solving with frontend and application development.</p></div></li>
-          <li><span className="timeline__years">Exploring</span><div><p className="timeline__role">AI, GenAI, backend and intelligent systems</p><p className="timeline__note">Learning how modern models and production software fit together end to end.</p></div></li>
-          <li><span className="timeline__years">Long term</span><div><p className="timeline__role">Agritech entrepreneur</p><p className="timeline__note">Interested in applying AI, drones, IoT and robotics to practical agricultural problems.</p></div></li>
-        </ol>
+
+      <div className="stats-grid">
+        <div><strong>05</strong><span>featured builds</span></div>
+        <div><strong>03</strong><span>core languages</span></div>
+        <div><strong>12+</strong><span>skills in active rotation</span></div>
+        <div><strong>01</strong><span>long-term direction: agritech</span></div>
+      </div>
+    </section>
+  );
+}
+
+function Skills() {
+  return (
+    <section id="skills" className="skills section">
+      <div className="section__intro">
+        <div>
+          <p className="section-label">03 — Toolkit</p>
+          <h2>Tools are useful. <em>Fundamentals</em> are better.</h2>
+        </div>
+        <p className="section__intro-copy">
+          The stack is growing, but the goal stays the same: strong problem solving, clear systems, and the ability to learn fast.
+        </p>
+      </div>
+
+      <div className="skills-board">
+        {SKILLS.map((skill, index) => (
+          <div key={skill.label} className="skill-tile" style={{ "--i": index }}>
+            <span className="skill-tile__group">{skill.group}</span>
+            <strong>{skill.label}</strong>
+            <span className="skill-tile__level">{skill.level}</span>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
 function Contact() {
-  const [status, setStatus] = useState("");
+  const [copied, setCopied] = useState(false);
   const email = "swaroopkola@example.com";
 
   const copyEmail = async () => {
     try {
       await navigator.clipboard.writeText(email);
-      setStatus("Copied");
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2200);
     } catch {
-      setStatus("Select the email and copy it manually.");
+      setCopied(false);
     }
-    window.setTimeout(() => setStatus(""), 2200);
   };
 
   return (
-    <section id="contact" className="contact on-blue" aria-labelledby="contact-title">
-      <div className="wrap">
-        <h2 id="contact-title" className="contact__title">Have something worth building?</h2>
-        <p className="contact__note">I'm open to internships, collaborations, and projects where software and AI can solve a real problem.</p>
-        <p className="contact__mailrow">
-          <a className="contact__mail" href={`mailto:${email}`}>{email}</a>
+    <section id="contact" className="contact section">
+      <div className="contact__orb contact__orb--one" />
+      <div className="contact__orb contact__orb--two" />
+      <div className="contact__content">
+        <p className="section-label">04 — Contact</p>
+        <h2>Let’s build something that <em>matters.</em></h2>
+        <p className="contact__lead">
+          Open to internships, collaborations, hackathons, and thoughtful projects involving software or AI.
         </p>
-        <button className={`copy ${status === "Copied" ? "is-done" : ""}`} type="button" onClick={copyEmail}>
-          {status === "Copied" ? "Copied" : "Copy email"}
-        </button>
-        <span className="sr-only" role="status" aria-live="polite">{status}</span>
-        <ul className="socials" aria-label="Elsewhere">
-          <li><a href="https://github.com/swaroopkola77-create" target="_blank" rel="noreferrer">GitHub</a></li>
-          <li><a href="https://www.linkedin.com/" target="_blank" rel="noreferrer">LinkedIn</a></li>
-          <li><a href="https://github.com/swaroopkola77-create?tab=repositories" target="_blank" rel="noreferrer">Projects</a></li>
-        </ul>
+        <div className="contact__actions">
+          <a className="contact-email" href={"mailto:" + email}>{email}</a>
+          <button className={"button button--light" + (copied ? " is-copied" : "")} type="button" onClick={copyEmail}>
+            {copied ? "Email copied ✓" : "Copy email"}
+          </button>
+        </div>
+        <div className="contact__links">
+          <a href="https://github.com/swaroopkola77-create" target="_blank" rel="noreferrer">GitHub ↗</a>
+          <a href="https://www.linkedin.com/" target="_blank" rel="noreferrer">LinkedIn ↗</a>
+          <a href="#work">Selected work ↓</a>
+        </div>
       </div>
-      <footer className="foot"><p>© {new Date().getFullYear()} Swaroop Kola. Built with React and Vite.</p></footer>
+      <footer className="site-footer">
+        <span>© {new Date().getFullYear()} Swaroop Kola</span>
+        <span>CSE AI/ML · React · Python · C++</span>
+      </footer>
     </section>
   );
 }
 
 function App() {
-  const navIds = useMemo(() => ["work", "about", "contact"], []);
   const [active, setActive] = useState("");
 
   useEffect(() => {
-    const nodes = navIds.map((id) => document.getElementById(id)).filter(Boolean);
-    if (!("IntersectionObserver" in window)) return undefined;
+    document.title = "Swaroop Kola — AI/ML Developer Portfolio";
+    const ids = ["work", "about", "skills", "contact"];
+    const sections = ids.map((id) => document.getElementById(id)).filter(Boolean);
     const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => {
-        if (entry.isIntersecting) setActive(entry.target.id);
-      }),
-      { rootMargin: "-45% 0px -50% 0px" }
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) setActive(visible.target.id);
+      },
+      { rootMargin: "-35% 0px -55% 0px", threshold: [0.05, 0.25, 0.5, 0.75] }
     );
-    nodes.forEach((node) => observer.observe(node));
+    sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, [navIds]);
-
-  useEffect(() => {
-    document.title = "Swaroop Kola | CSE AI/ML Developer";
   }, []);
 
   return (
     <>
-      <Header activeSection={active} />
-      <main id="top">
-        <Hero />
+      <a className="skip-link" href="#main">Skip to content</a>
+      <Header active={active} />
+      <main id="main">
+        <div id="top"><Hero /></div>
         <Work />
         <About />
+        <Skills />
         <Contact />
       </main>
     </>
