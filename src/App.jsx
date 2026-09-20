@@ -159,7 +159,6 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
   const hoverRef = useRef(null);
   const smoothRef = useRef({ x: 0.5, y: 0.5 });
   const lastStatusRef = useRef("");
-  const trackingRef = useRef(false);
 
   const [enabled, setEnabled] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -173,15 +172,8 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     onStatusChange?.(value);
   };
 
-  const setTracking = (value) => {
-    if (trackingRef.current === value) return;
-    trackingRef.current = value;
-    onTrackingChange?.(value);
-  };
-
   const setCursorVisible = (visible) => {
-    const node = cursorRef?.current;
-    if (node) node.dataset.visible = String(visible);
+    if (cursorRef?.current) cursorRef.current.dataset.visible = String(visible);
   };
 
   const setCursor = (x, y, mode) => {
@@ -204,15 +196,15 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
   };
 
   const completeClick = () => {
-    const { active, target } = clickRef.current;
-    if (!active) return;
+    const held = clickRef.current;
+    if (!held.active) return;
     clickRef.current = { active: false, target: null };
     document.documentElement.style.setProperty("--hand-cursor-pulse", "0");
-    if (target && document.contains(target)) {
-      if (target instanceof HTMLAnchorElement && target.target === "_blank") {
-        window.location.assign(target.href);
+    if (held.target && document.contains(held.target)) {
+      if (held.target instanceof HTMLAnchorElement && held.target.target === "_blank") {
+        window.location.assign(held.target.href);
       } else {
-        target.click();
+        held.target.click();
       }
     }
   };
@@ -225,6 +217,21 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     if (state.count >= required) state.current = next;
     return state.current;
   };
+
+  useEffect(() => {
+    activeRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => () => {
+    activeRef.current = false;
+    sessionRef.current += 1;
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    detectorRef.current?.close?.();
+    cancelClick();
+    clearHover();
+    setCursorVisible(false);
+  }, []);
 
   const detectFrame = () => {
     const video = videoRef.current;
@@ -247,13 +254,11 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
       clearHover();
       scrollRef.current = { y: null, time: 0, velocity: 0 };
       setCursorVisible(false);
-      setTracking(false);
       emitStatus("FIND YOUR HAND");
       frameRef.current = requestAnimationFrame(detectFrame);
       return;
     }
 
-    setTracking(true);
     const raw = classifyGesture(hand, gestureStateRef.current.current);
     const gestureType = stabilizeGesture(raw.type);
 
@@ -292,9 +297,7 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
         }
         emitStatus(target ? "CLICKING" : "CLICK READY");
       } else {
-        if (clickRef.current.active) {
-          completeClick();
-        }
+        if (clickRef.current.active) completeClick();
         emitStatus(target ? "POINTER READY" : "POINTER");
       }
     } else if (gestureType === "scroll-up" || gestureType === "scroll-down") {
@@ -302,13 +305,11 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
       clearHover();
 
       const now = performance.now();
-      const previousY = scrollRef.current.y;
-      if (previousY !== null) {
-        const delta = y - previousY;
+      if (scrollRef.current.y !== null) {
+        const delta = y - scrollRef.current.y;
         const dt = Math.max(8, now - scrollRef.current.time);
         const instantaneousVelocity = delta / dt;
         scrollRef.current.velocity = scrollRef.current.velocity * 0.72 + instantaneousVelocity * 0.28;
-
         const magnitude = Math.min(95, Math.max(12, Math.abs(scrollRef.current.velocity) * 1600 + Math.abs(delta) * 2.8));
         const direction = gestureType === "scroll-up" ? -1 : 1;
         window.scrollBy({ top: direction * magnitude, behavior: "auto" });
@@ -337,11 +338,9 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     const session = ++sessionRef.current;
     setError("");
     emitStatus("STARTING");
-    setTracking(false);
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("INSECURE_CONTEXT");
-
       const mediapipe = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm");
       if (session !== sessionRef.current) return;
 
@@ -397,7 +396,6 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     } catch (err) {
       activeRef.current = false;
       setEnabled(false);
-      setTracking(false);
       emitStatus("UNAVAILABLE");
       setError(
         err?.name === "NotAllowedError"
@@ -420,7 +418,6 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     activeRef.current = false;
     sessionRef.current += 1;
     setEnabled(false);
-    setTracking(false);
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -457,7 +454,7 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
         </div>
       </div>
       <div className="hand-control__statusbar">
-        <span className={"hand-control__status hand-control__status--" + status.toLowerCase().replaceAll(" ", "-")}><i /> {status || "Off"}</span>
+        <span className={"hand-control__status hand-control__status--" + status.toLowerCase().replaceAll(" ", "-")}><i /> {status || "OFF"}</span>
         <span className="hand-control__hint">Index controls the cursor. Open thumb holds click; close thumb completes it. Three fingers scroll up, four scroll down.</span>
       </div>
       <div className="hand-control__gestures">
@@ -471,6 +468,7 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     </section>
   );
 }
+
 
 function Header({ active, onQuickNav }) {
   return (
