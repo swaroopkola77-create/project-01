@@ -99,46 +99,42 @@ function distance2d(a, b) {
 }
 
 function angleAt(a, b, c) {
-  const abx = a.x - b.x;
-  const aby = a.y - b.y;
-  const cbx = c.x - b.x;
-  const cby = c.y - b.y;
-  const dot = abx * cbx + aby * cby;
-  const mag = Math.hypot(abx, aby) * Math.hypot(cbx, cby);
-  if (!mag) return 0;
-  return Math.acos(Math.max(-1, Math.min(1, dot / mag))) * 180 / Math.PI;
+  const ab = { x: a.x - b.x, y: a.y - b.y };
+  const cb = { x: c.x - b.x, y: c.y - b.y };
+  const denom = Math.hypot(ab.x, ab.y) * Math.hypot(cb.x, cb.y);
+  if (!denom) return 0;
+  return Math.acos(Math.max(-1, Math.min(1, (ab.x * cb.x + ab.y * cb.y) / denom))) * 180 / Math.PI;
 }
 
-function isFingerExtended(lm, tip, pip, mcp) {
-  const wrist = lm[0];
-  return distance2d(wrist, lm[tip]) > distance2d(wrist, lm[pip]) * 1.04 &&
-    angleAt(lm[tip], lm[pip], lm[mcp]) > 130;
+function fingerExtended(lm, tip, pip, mcp) {
+  return distance2d(lm[0], lm[tip]) > distance2d(lm[0], lm[pip]) * 1.05 &&
+    angleAt(lm[tip], lm[pip], lm[mcp]) > 128;
 }
 
-function isThumbOpen(lm) {
-  return angleAt(lm[4], lm[3], lm[2]) > 135 ||
-    distance2d(lm[4], lm[5]) > distance2d(lm[3], lm[5]) * 1.12;
+function thumbOpen(lm) {
+  const palmWidth = Math.max(0.001, distance2d(lm[5], lm[17]));
+  return distance2d(lm[4], lm[5]) / palmWidth > 0.58 &&
+    angleAt(lm[4], lm[3], lm[2]) > 105;
 }
 
-function classifyGesture(lm) {
+function classifyGesture(lm, previous = "neutral") {
   const fingers = {
-    index: isFingerExtended(lm, 8, 6, 5),
-    middle: isFingerExtended(lm, 12, 10, 9),
-    ring: isFingerExtended(lm, 16, 14, 13),
-    little: isFingerExtended(lm, 20, 18, 17),
+    index: fingerExtended(lm, 8, 6, 5),
+    middle: fingerExtended(lm, 12, 10, 9),
+    ring: fingerExtended(lm, 16, 14, 13),
+    little: fingerExtended(lm, 20, 18, 17),
   };
-  const thumbOpen = isThumbOpen(lm);
-  const indexOnly = fingers.index && !fingers.middle && !fingers.ring && !fingers.little;
-  const threeUp = fingers.index && fingers.middle && fingers.ring && !fingers.little;
-  const fourDown = fingers.index && fingers.middle && fingers.ring && fingers.little;
-  const fist = !fingers.index && !fingers.middle && !fingers.ring && !fingers.little;
-  const allFiveOpen = fourDown && thumbOpen;
+  const thumb = thumbOpen(lm);
+  const count = Object.values(fingers).filter(Boolean).length;
 
-  if (allFiveOpen || fist) return { type: "pause", thumbOpen };
-  if (fourDown) return { type: "scroll-down", thumbOpen };
-  if (threeUp) return { type: "scroll-up", thumbOpen };
-  if (indexOnly) return { type: thumbOpen ? "click-hold" : "pointer", thumbOpen };
-  return { type: "neutral", thumbOpen };
+  if (count === 0 || (count === 4 && thumb)) return { type: "pause", thumb };
+  if (count === 4) return { type: "scroll-down", thumb };
+  if (fingers.index && fingers.middle && fingers.ring && !fingers.little) return { type: "scroll-up", thumb };
+  if (fingers.index && !fingers.middle && !fingers.ring && !fingers.little) {
+    return { type: thumb ? "click-hold" : "pointer", thumb };
+  }
+
+  return previous !== "neutral" ? { type: previous, thumb, uncertain: true } : { type: "neutral", thumb };
 }
 
 function getInteractiveTarget(x, y) {
@@ -147,21 +143,20 @@ function getInteractiveTarget(x, y) {
   return element.closest('a[href], button, input, label, summary, [role="button"], [tabindex]:not([tabindex="-1"])');
 }
 
-function HandControl({ onStatusChange }) {
+function HandControl({ onTrackingChange, onStatusChange }) {
   const videoRef = useRef(null);
   const cursorRef = useRef(null);
   const detectorRef = useRef(null);
   const streamRef = useRef(null);
   const frameRef = useRef(null);
+  const sessionRef = useRef(0);
   const activeRef = useRef(false);
   const busyRef = useRef(false);
-  const sessionRef = useRef(0);
   const lastVideoTimeRef = useRef(-1);
-  const hoverTargetRef = useRef(null);
-  const clickTargetRef = useRef(null);
-  const clickDownRef = useRef(false);
-  const scrollRef = useRef({ lastY: null });
-  const pulseTimerRef = useRef(null);
+  const gestureStateRef = useRef({ candidate: "neutral", count: 0, current: "neutral" });
+  const clickRef = useRef({ active: false, target: null });
+  const scrollRef = useRef({ y: null, time: 0 });
+  const hoverRef = useRef(null);
   const smoothRef = useRef({ x: 0.5, y: 0.5 });
 
   const [enabled, setEnabled] = useState(false);
@@ -174,38 +169,39 @@ function HandControl({ onStatusChange }) {
     onStatusChange?.(value);
   };
 
-  const setCursor = (x, y, mode) => {
-    if (!cursorRef.current) return;
-    cursorRef.current.style.transform = "translate3d(" + x + "px," + y + "px,0)";
-    cursorRef.current.style.setProperty("--hand-cursor-scale", mode.startsWith("scroll") ? "1.15" : mode === "click-hold" ? "1.08" : "1");
-    cursorRef.current.style.setProperty("--hand-cursor-opacity", "1");
+  const setCursorVisible = (visible) => {
+    if (cursorRef.current) cursorRef.current.dataset.visible = String(visible);
+  };
+
+  const renderCursor = (x, y, mode) => {
+    const node = cursorRef.current;
+    if (!node) return;
+    node.style.transform = "translate3d(" + x + "px," + y + "px,0)";
+    node.style.setProperty("--hand-cursor-scale", mode === "click-hold" ? "1.16" : mode.startsWith("scroll") ? "1.22" : "1");
+    node.style.setProperty("--hand-cursor-color", mode === "click-hold" ? "var(--acid)" : mode.startsWith("scroll") ? "var(--cyan)" : "#f6ffcf");
+    setCursorVisible(true);
   };
 
   const clearHover = () => {
-    hoverTargetRef.current?.classList.remove("is-hand-hover");
-    hoverTargetRef.current = null;
+    hoverRef.current?.classList.remove("is-hand-hover");
+    hoverRef.current = null;
   };
 
   const releaseClick = () => {
-    if (!clickDownRef.current) return;
-    const target = clickTargetRef.current;
-    clickDownRef.current = false;
-    clickTargetRef.current = null;
+    const held = clickRef.current;
+    if (!held.active) return;
+    clickRef.current = { active: false, target: null };
     document.documentElement.style.setProperty("--hand-cursor-pulse", "0");
-    if (target && document.contains(target)) {
-      target.click();
-    }
+    if (held.target && document.contains(held.target)) held.target.click();
   };
 
-  const setClickPulse = () => {
-    if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
-    document.documentElement.style.setProperty("--hand-cursor-pulse", "1");
-  };
-
-  const clearCursor = () => {
-    releaseClick();
-    clearHover();
-    cursorRef.current?.style.setProperty("--hand-cursor-opacity", "0");
+  const smoothGesture = (raw) => {
+    const state = gestureStateRef.current;
+    state.count = raw === state.candidate ? state.count + 1 : 1;
+    state.candidate = raw;
+    const required = raw === "pointer" || raw === "click-hold" ? 2 : 3;
+    if (state.count >= required) state.current = raw;
+    return state.current;
   };
 
   useEffect(() => {
@@ -216,10 +212,11 @@ function HandControl({ onStatusChange }) {
     activeRef.current = false;
     sessionRef.current += 1;
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     detectorRef.current?.close?.();
-    clearCursor();
+    releaseClick();
+    clearHover();
+    setCursorVisible(false);
   }, []);
 
   const detectFrame = () => {
@@ -242,69 +239,76 @@ function HandControl({ onStatusChange }) {
 
     if (!hand) {
       releaseClick();
-      scrollRef.current.lastY = null;
+      clearHover();
+      scrollRef.current.y = null;
+      setCursorVisible(false);
       setStatusSafe("searching");
-      clearCursor();
+      onTrackingChange?.(false);
       frameRef.current = requestAnimationFrame(detectFrame);
       return;
     }
 
-    const gesture = classifyGesture(hand);
+    onTrackingChange?.(true);
+    const raw = classifyGesture(hand, gestureStateRef.current.current);
+    const type = smoothGesture(raw.type);
+
     const tip = hand[8];
     const targetX = 1 - tip.x;
     const targetY = tip.y;
     const dx = targetX - smoothRef.current.x;
     const dy = targetY - smoothRef.current.y;
-    const factor = Math.min(0.62, 0.32 + Math.hypot(dx, dy) * 2.4);
+    const smoothing = Math.min(0.72, 0.4 + Math.hypot(dx, dy) * 2);
+    smoothRef.current.x += dx * smoothing;
+    smoothRef.current.y += dy * smoothing;
 
-    smoothRef.current.x += dx * factor;
-    smoothRef.current.y += dy * factor;
+    const x = Math.max(5, Math.min(window.innerWidth - 5, smoothRef.current.x * window.innerWidth));
+    const y = Math.max(5, Math.min(window.innerHeight - 5, smoothRef.current.y * window.innerHeight));
+    renderCursor(x, y, type);
 
-    const x = Math.max(6, Math.min(window.innerWidth - 6, smoothRef.current.x * window.innerWidth));
-    const y = Math.max(6, Math.min(window.innerHeight - 6, smoothRef.current.y * window.innerHeight));
-    setCursor(x, y, gesture.type);
-
-    if (gesture.type === "pointer" || gesture.type === "click-hold") {
-      scrollRef.current.lastY = null;
+    if (type === "pointer" || type === "click-hold") {
+      scrollRef.current.y = null;
       const target = getInteractiveTarget(x, y);
 
-      if (target !== hoverTargetRef.current) {
+      if (target !== hoverRef.current) {
         clearHover();
-        hoverTargetRef.current = target;
+        hoverRef.current = target;
         target?.classList.add("is-hand-hover");
       }
 
-      if (gesture.type === "click-hold") {
-        if (!clickDownRef.current) {
-          clickDownRef.current = true;
-          clickTargetRef.current = target;
+      if (type === "click-hold") {
+        if (!clickRef.current.active) {
+          clickRef.current = { active: true, target };
           target?.focus?.({ preventScroll: true });
-          setClickPulse();
-        } else if (clickTargetRef.current !== target) {
-          clickTargetRef.current = target;
+          document.documentElement.style.setProperty("--hand-cursor-pulse", "1");
         }
         setStatusSafe(target ? "click-hold" : "click-ready");
       } else {
         releaseClick();
         setStatusSafe(target ? "hover" : "pointer");
       }
-    } else if (gesture.type === "scroll-up" || gesture.type === "scroll-down") {
+    } else if (type === "scroll-up" || type === "scroll-down") {
       releaseClick();
       clearHover();
-      const previousY = scrollRef.current.lastY;
-      const handDelta = previousY == null ? 0 : y - previousY;
-      if (Math.abs(handDelta) > 1.2) {
-        const magnitude = Math.min(42, Math.max(8, Math.abs(handDelta) * 2.2));
-        const direction = gesture.type === "scroll-up" ? -1 : 1;
-        window.scrollBy({ top: direction * magnitude, behavior: "auto" });
+      const now = performance.now();
+      if (scrollRef.current.y !== null) {
+        const delta = y - scrollRef.current.y;
+        const dt = Math.max(16, now - scrollRef.current.time);
+        const speed = Math.max(0.3, Math.min(2, Math.abs(delta) / dt * 20));
+        const amount = Math.min(44, Math.max(6, speed * 12));
+        window.scrollBy({ top: type === "scroll-up" ? -amount : amount, behavior: "auto" });
       }
-      scrollRef.current.lastY = y;
-      setStatusSafe(gesture.type);
+      scrollRef.current = { y, time: now };
+      setStatusSafe(type);
+    } else if (type === "pause") {
+      releaseClick();
+      clearHover();
+      scrollRef.current.y = null;
+      setStatusSafe("pause");
     } else {
       releaseClick();
-      scrollRef.current.lastY = null;
       clearHover();
-      setStatusSafe(gesture.type);
+      scrollRef.current.y = null;
+      setStatusSafe("tracking");
     }
 
     frameRef.current = requestAnimationFrame(detectFrame);
@@ -316,15 +320,15 @@ function HandControl({ onStatusChange }) {
     const session = ++sessionRef.current;
     setError("");
     setStatusSafe("starting");
+    onTrackingChange?.(false);
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("INSECURE_CONTEXT");
+
       const mediapipe = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm");
       if (session !== sessionRef.current) return;
 
-      const fileset = await mediapipe.FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm"
-      );
+      const fileset = await mediapipe.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm");
       if (session !== sessionRef.current) return;
 
       const detector = await mediapipe.HandLandmarker.createFromOptions(fileset, {
@@ -337,6 +341,7 @@ function HandControl({ onStatusChange }) {
         minHandPresenceConfidence: 0.58,
         minTrackingConfidence: 0.58,
       });
+
       if (session !== sessionRef.current) {
         detector.close?.();
         return;
@@ -344,14 +349,10 @@ function HandControl({ onStatusChange }) {
       detectorRef.current = detector;
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-          frameRate: { ideal: 30, max: 60 },
-        },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user", frameRate: { ideal: 30, max: 60 } },
         audio: false,
       });
+
       if (session !== sessionRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         detector.close?.();
@@ -363,6 +364,7 @@ function HandControl({ onStatusChange }) {
       videoRef.current.muted = true;
       videoRef.current.playsInline = true;
       await videoRef.current.play();
+
       if (session !== sessionRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         detector.close?.();
@@ -372,12 +374,14 @@ function HandControl({ onStatusChange }) {
       activeRef.current = true;
       setEnabled(true);
       lastVideoTimeRef.current = -1;
-      scrollRef.current.lastY = null;
+      gestureStateRef.current = { candidate: "neutral", count: 0, current: "neutral" };
+      setCursorVisible(false);
       setStatusSafe("searching");
       frameRef.current = requestAnimationFrame(detectFrame);
     } catch (err) {
-      setEnabled(false);
       activeRef.current = false;
+      setEnabled(false);
+      onTrackingChange?.(false);
       setStatusSafe("error");
       setError(
         err?.name === "NotAllowedError"
@@ -390,7 +394,7 @@ function HandControl({ onStatusChange }) {
       detectorRef.current = null;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      clearCursor();
+      setCursorVisible(false);
     } finally {
       busyRef.current = false;
     }
@@ -400,6 +404,7 @@ function HandControl({ onStatusChange }) {
     activeRef.current = false;
     sessionRef.current += 1;
     setEnabled(false);
+    onTrackingChange?.(false);
     setStatusSafe("off");
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
@@ -408,17 +413,19 @@ function HandControl({ onStatusChange }) {
     detectorRef.current?.close?.();
     detectorRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    lastVideoTimeRef.current = -1;
-    scrollRef.current.lastY = null;
-    clearCursor();
+    releaseClick();
+    clearHover();
+    scrollRef.current.y = null;
+    setCursorVisible(false);
   };
 
   const labels = {
     off: "Off",
     starting: "Starting",
     searching: "Find your hand",
+    tracking: "Tracking",
     pointer: "Pointer",
-    hover: "Pointer over target",
+    hover: "Pointer ready",
     "click-ready": "Click ready",
     "click-hold": "Click held",
     "scroll-up": "Scroll up",
@@ -434,8 +441,8 @@ function HandControl({ onStatusChange }) {
       <div className="hand-control__header">
         <div>
           <p className="section-label">05 — Air control</p>
-          <h2>Navigate with your hands.</h2>
-          <p className="hand-control__copy">☝ Pointer · 👍 Hold thumb open to click · 🤟 Scroll up · 🖐 Scroll down · ✋ Pause</p>
+          <h2>Hands become the interface.</h2>
+          <p className="hand-control__copy">☝ Point · 👍 thumb-open click · 🤟 3-finger up · 🖐 4-finger down · ✋ pause</p>
         </div>
         <div className="hand-control__actions">
           <button className={"button " + (enabled ? "button--light" : "button--primary")} type="button" onClick={enabled ? stop : start}>
@@ -451,14 +458,14 @@ function HandControl({ onStatusChange }) {
       </div>
       <div className="hand-control__statusbar">
         <span className={"hand-control__status hand-control__status--" + status}><i /> {labels[status] || "Ready"}</span>
-        <span className="hand-control__hint">☝ move cursor · thumb open holds click · 3 fingers scroll up · 4 fingers scroll down · open hand or fist pauses</span>
+        <span className="hand-control__hint">The cursor appears as soon as a hand is tracked. Gestures are stabilized frame-to-frame.</span>
       </div>
       <div className="hand-control__gestures">
         <span>☝ Pointer</span>
-        <span>👍 Thumb open = click hold</span>
-        <span>🤟 Index + middle + ring = up</span>
-        <span>🖐 + little = down</span>
-        <span>✋ All open / fist = pause</span>
+        <span>👍 Thumb open = click</span>
+        <span>🤟 3 fingers = up</span>
+        <span>🖐 4 fingers = down</span>
+        <span>✋ Open / fist = pause</span>
       </div>
       {error && <p className="hand-control__error" role="alert">{error}</p>}
     </section>
