@@ -2390,3 +2390,49 @@ main {
     transition: none;
   }
 }
+
+.hand-control__gestures {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .75rem;
+}
+
+.hand-control__gestures span {
+  padding: .38rem .55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255,255,255,.018);
+  color: #9198a6;
+  font: 500 .6rem/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .04em;
+}
+
+.hand-control__gestures span:nth-child(2) {
+  color: var(--acid);
+}
+
+.hand-control__gestures span:nth-child(3) {
+  color: var(--cyan);
+}
+
+.hand-control__status--click i {
+  background: var(--acid);
+  box-shadow: 0 0 16px rgba(215,255,79,.72);
+}
+
+.hand-control__status--pause i {
+  background: #7c8491;
+}
+
+@media (max-width: 720px) {
+  .hand-control__gestures {
+    gap: .35rem;
+  }
+
+  .hand-control__gestures span {
+    font-size: .56rem;
+  }
+}
