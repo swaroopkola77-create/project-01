@@ -188,9 +188,13 @@ function HandControl({ onStatusChange }) {
 
   const releaseClick = () => {
     if (!clickDownRef.current) return;
+    const target = clickTargetRef.current;
     clickDownRef.current = false;
     clickTargetRef.current = null;
     document.documentElement.style.setProperty("--hand-cursor-pulse", "0");
+    if (target && document.contains(target)) {
+      target.click();
+    }
   };
 
   const setClickPulse = () => {
