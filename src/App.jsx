@@ -13,6 +13,8 @@ const PROJECTS = [
     stack: ["Python", "OpenCV", "React", "ML"],
     metrics: ["Image upload", "Region explorer", "Confidence UI"],
     accent: "cyan",
+    track: "AI / ML",
+    stage: "Concept",
   },
   {
     id: "smart-agri",
@@ -26,6 +28,8 @@ const PROJECTS = [
     stack: ["React", "Python", "IoT", "Data"],
     metrics: ["Field health", "Sensor feed", "Action queue"],
     accent: "lime",
+    track: "AI / ML",
+    stage: "Concept",
   },
   {
     id: "quiz-lab",
@@ -39,6 +43,8 @@ const PROJECTS = [
     stack: ["React", "JavaScript", "CSS"],
     metrics: ["Dynamic state", "Responsive UI", "Reusable components"],
     accent: "violet",
+    track: "Frontend",
+    stage: "Built",
   },
   {
     id: "job-board",
@@ -52,6 +58,8 @@ const PROJECTS = [
     stack: ["React", "JavaScript", "CSS"],
     metrics: ["Search", "Filters", "Card system"],
     accent: "orange",
+    track: "Product",
+    stage: "Built",
   },
   {
     id: "ecommerce-ui",
@@ -65,6 +73,8 @@ const PROJECTS = [
     stack: ["React", "Tailwind CSS", "JavaScript"],
     metrics: ["Responsive grid", "Reusable UI", "Mobile-first"],
     accent: "pink",
+    track: "Frontend",
+    stage: "Built",
   },
 ];
 
@@ -83,7 +93,7 @@ const SKILLS = [
   { label: "DSA", group: "Problem Solving", level: "Core" },
 ];
 
-function Header({ active }) {
+function Header({ active, onQuickNav }) {
   return (
     <header className="site-header">
       <a className="brand" href="#top" aria-label="Swaroop Kola home">
@@ -102,7 +112,12 @@ function Header({ active }) {
           </a>
         ))}
       </nav>
-      <a className="header-cta" href="#contact">Let's build ↗</a>
+      <div className="header-actions">
+        <button className="header-kbd" type="button" onClick={onQuickNav} aria-label="Open quick navigation">
+          <span>⌘</span><span>K</span>
+        </button>
+        <a className="header-cta" href="#contact">Let's build ↗</a>
+      </div>
     </header>
   );
 }
@@ -118,6 +133,16 @@ function OrbitalScene() {
     let target = { x: 0, y: 0 };
     let current = { x: 0, y: 0 };
 
+    const render = () => {
+      current.x += (target.x - current.x) * 0.08;
+      current.y += (target.y - current.y) * 0.08;
+      scene.style.setProperty("--px", current.x.toFixed(3));
+      scene.style.setProperty("--py", current.y.toFixed(3));
+      frame = Math.abs(target.x - current.x) > 0.002 || Math.abs(target.y - current.y) > 0.002
+        ? requestAnimationFrame(render)
+        : null;
+    };
+
     const move = (event) => {
       const rect = scene.getBoundingClientRect();
       target = {
@@ -130,18 +155,6 @@ function OrbitalScene() {
     const leave = () => {
       target = { x: 0, y: 0 };
       if (!frame) frame = requestAnimationFrame(render);
-    };
-
-    const render = () => {
-      current.x += (target.x - current.x) * 0.08;
-      current.y += (target.y - current.y) * 0.08;
-      scene.style.setProperty("--px", current.x.toFixed(3));
-      scene.style.setProperty("--py", current.y.toFixed(3));
-      scene.style.setProperty("--rx", (current.y * -8).toFixed(2) + "deg");
-      scene.style.setProperty("--ry", (current.x * 10).toFixed(2) + "deg");
-      frame = Math.abs(target.x - current.x) > 0.002 || Math.abs(target.y - current.y) > 0.002
-        ? requestAnimationFrame(render)
-        : null;
     };
 
     scene.addEventListener("pointermove", move);
@@ -204,7 +217,13 @@ function Hero() {
 function ProjectCard({ project, isOpen, onToggle }) {
   return (
     <article className={"project-card project-card--" + project.accent + (isOpen ? " is-open" : "")}>
-      <button className="project-card__toggle" type="button" onClick={onToggle} aria-expanded={isOpen}>
+      <button
+        className="project-card__toggle"
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={"project-" + project.id}
+      >
         <span className="project-card__number">{project.number}</span>
         <span className="project-card__main">
           <span className="project-card__category">{project.category}</span>
@@ -215,9 +234,10 @@ function ProjectCard({ project, isOpen, onToggle }) {
         <span className="project-card__icon" aria-hidden="true">+</span>
       </button>
 
-      <div className="project-card__details">
+      <div className="project-card__details" id={"project-" + project.id}>
         <div className="project-card__visual">
           <div className="project-visual-grid" />
+          <div className="project-visual-scan" />
           <div className="project-visual-core">
             <span>{project.number}</span>
             <strong>{project.category}</strong>
@@ -225,14 +245,21 @@ function ProjectCard({ project, isOpen, onToggle }) {
           <div className="project-visual-chip project-visual-chip--a">{project.stack[0]}</div>
           <div className="project-visual-chip project-visual-chip--b">{project.stack[1]}</div>
           <div className="project-visual-chip project-visual-chip--c">{project.stack.at(-1)}</div>
+          <span className="project-visual-status">● {project.stage.toUpperCase()}</span>
         </div>
         <div className="project-card__content">
-          <p>{project.description}</p>
+          <div className="project-card__copy">
+            <p>{project.description}</p>
+            <div className="project-card__facts">
+              <span><b>Role</b> Design + Build</span>
+              <span><b>Track</b> {project.track}</span>
+            </div>
+          </div>
           <div className="project-card__stack">
             {project.stack.map((item) => <span key={item}>{item}</span>)}
           </div>
           <div className="project-card__metrics">
-            {project.metrics.map((metric) => <div key={metric}><span>+</span>{metric}</div>)}
+            {project.metrics.map((metric) => <div key={metric}><b>+</b>{metric}</div>)}
           </div>
           <a className="text-link" href="#contact">Discuss this project ↗</a>
         </div>
@@ -243,6 +270,12 @@ function ProjectCard({ project, isOpen, onToggle }) {
 
 function Work() {
   const [open, setOpen] = useState("ai-cell-scanner");
+  const [filter, setFilter] = useState("All");
+  const filters = ["All", "AI / ML", "Frontend", "Product"];
+
+  const filteredProjects = PROJECTS.filter((project) => (
+    filter === "All" ? true : project.track === filter
+  ));
 
   return (
     <section id="work" className="work section">
@@ -251,13 +284,29 @@ function Work() {
           <p className="section-label">01 — Selected work</p>
           <h2>Projects that move from <em>idea</em> to interface.</h2>
         </div>
-        <p className="section__intro-copy">
-          A mix of learning projects, product experiments, and future-facing concepts. Some are exploratory — the goal is to show how I think, build, and communicate.
-        </p>
+        <div className="section__intro-side">
+          <p className="section__intro-copy">
+            A mix of learning projects, product experiments, and future-facing concepts. Some are exploratory — the goal is to show how I think, build, and communicate.
+          </p>
+          <div className="work-filter" role="tablist" aria-label="Filter projects">
+            {filters.map((item) => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                aria-selected={filter === item}
+                className={"filter-chip" + (filter === item ? " is-active" : "")}
+                onClick={() => setFilter(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="project-list">
-        {PROJECTS.map((project) => (
+        {filteredProjects.map((project) => (
           <ProjectCard
             key={project.id}
             project={project}
@@ -265,6 +314,11 @@ function Work() {
             onToggle={() => setOpen(open === project.id ? null : project.id)}
           />
         ))}
+      </div>
+
+      <div className="work-footer">
+        <span>{filteredProjects.length.toString().padStart(2, "0")} projects in view</span>
+        <span>Click a row to inspect the build</span>
       </div>
     </section>
   );
@@ -368,7 +422,10 @@ function Contact() {
       <div className="contact__orb contact__orb--one" />
       <div className="contact__orb contact__orb--two" />
       <div className="contact__content">
-        <p className="section-label">04 — Contact</p>
+        <div className="contact__topline">
+          <p className="section-label">04 — Contact</p>
+          <span className="availability"><i /> Available for internships & collaborations</span>
+        </div>
         <h2>Let’s build something that <em>matters.</em></h2>
         <p className="contact__lead">
           Open to internships, collaborations, hackathons, and thoughtful projects involving software or AI.
@@ -388,6 +445,7 @@ function Contact() {
       <footer className="site-footer">
         <span>© {new Date().getFullYear()} Swaroop Kola</span>
         <span>CSE AI/ML · React · Python · C++</span>
+        <span>Built with curiosity + code</span>
       </footer>
     </section>
   );
@@ -395,6 +453,7 @@ function Contact() {
 
 function App() {
   const [active, setActive] = useState("");
+  const [quickNav, setQuickNav] = useState(false);
 
   useEffect(() => {
     document.title = "Swaroop Kola — AI/ML Developer Portfolio";
@@ -413,10 +472,27 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setQuickNav((value) => !value);
+      }
+      if (event.key === "Escape") setQuickNav(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const jump = (id) => {
+    setQuickNav(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <>
       <a className="skip-link" href="#main">Skip to content</a>
-      <Header active={active} />
+      <Header active={active} onQuickNav={() => setQuickNav(true)} />
       <main id="main">
         <div id="top"><Hero /></div>
         <Work />
@@ -424,6 +500,32 @@ function App() {
         <Skills />
         <Contact />
       </main>
+      {quickNav && (
+        <div className="quick-nav-backdrop" role="presentation" onClick={() => setQuickNav(false)}>
+          <div className="quick-nav" role="dialog" aria-modal="true" aria-labelledby="quick-nav-title" onClick={(event) => event.stopPropagation()}>
+            <div className="quick-nav__header">
+              <div>
+                <p className="section-label">Quick navigation</p>
+                <h3 id="quick-nav-title">Where do you want to go?</h3>
+              </div>
+              <button className="quick-nav__close" type="button" onClick={() => setQuickNav(false)} aria-label="Close quick navigation">×</button>
+            </div>
+            <div className="quick-nav__items">
+              {[
+                ["work", "Selected work", "01"],
+                ["about", "About me", "02"],
+                ["skills", "Toolkit", "03"],
+                ["contact", "Contact", "04"],
+              ].map(([id, label, number]) => (
+                <button key={id} type="button" onClick={() => jump(id)}>
+                  <span>{number}</span><strong>{label}</strong><b>↗</b>
+                </button>
+              ))}
+            </div>
+            <div className="quick-nav__hint"><span>ESC</span> to close <span>⌘ K</span> anytime</div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
