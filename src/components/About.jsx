@@ -1,4 +1,4 @@
-function About() {
+export function About() {
   return (
     <section id="about" className="about section">
       <div className="section__intro">
