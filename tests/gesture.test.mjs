@@ -104,3 +104,36 @@ if (!appSource.includes("if (held.target && document.contains(held.target))")) {
 }
 
 console.log("gesture tests: PASS (6 canonical gestures + ambiguous stabilization + fast-scroll guard)");
+
+
+// Transition and noise regression coverage for the scroll state machine.
+// The test remains dependency-free so it can run in any Node environment.
+const stabilizeSequence = (sequence, required = 3) => {
+  let candidate = "neutral";
+  let count = 0;
+  let current = "neutral";
+  for (const next of sequence) {
+    count = next === candidate ? count + 1 : 1;
+    candidate = next;
+    if (count >= required) current = next;
+  }
+  return current;
+};
+
+if (stabilizeSequence(["scroll-up", "scroll-up", "scroll-up", "scroll-up"]) !== "scroll-up") {
+  throw new Error("scroll-up stabilization failed");
+}
+if (stabilizeSequence(["scroll-down", "scroll-down", "scroll-down", "scroll-down"]) !== "scroll-down") {
+  throw new Error("scroll-down stabilization failed");
+}
+if (stabilizeSequence(["scroll-up", "scroll-up", "scroll-up", "neutral", "scroll-up"]) !== "scroll-up") {
+  throw new Error("ambiguous scroll-up frame caused an unwanted state change");
+}
+if (stabilizeSequence(["scroll-down", "scroll-down", "scroll-down", "neutral", "scroll-down"]) !== "scroll-down") {
+  throw new Error("ambiguous scroll-down frame caused an unwanted state change");
+}
+if (stabilizeSequence(["scroll-up", "scroll-up", "scroll-down", "scroll-up", "scroll-up", "scroll-up"]) !== "scroll-up") {
+  throw new Error("rapid direction noise was not stabilized");
+}
+
+console.log("gesture transition/noise tests: PASS");
