@@ -167,7 +167,8 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
   const lastVideoTimeRef = useRef(-1);
   const gestureStateRef = useRef({ candidate: "neutral", count: 0, current: "neutral" });
   const clickRef = useRef({ active: false, target: null });
-  const scrollRef = useRef({ y: null, time: 0, velocity: 0 });
+  const scrollRef = useRef({ direction: 0, active: false, lastGestureTime: 0 });
+  const scrollFrameRef = useRef(null);
   const hoverRef = useRef(null);
   const smoothRef = useRef({ x: 0.5, y: 0.5 });
   const lastStatusRef = useRef("");
@@ -234,10 +235,43 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     activeRef.current = enabled;
   }, [enabled]);
 
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    let previousTime = performance.now();
+
+    const runScroll = (now) => {
+      if (!activeRef.current) return;
+      const state = scrollRef.current;
+      const dt = Math.min(34, Math.max(8, now - previousTime));
+      previousTime = now;
+
+      if (state.active && state.direction) {
+        // Continuous controller: once the gesture is accepted, scrolling is
+        // independent of camera-frame cadence. It ramps quickly and is capped
+        // to a comfortable mouse/trackpad-like page speed.
+        const maxSpeed = Math.max(720, Math.min(window.innerHeight * 1.2, 1150));
+        const ramp = Math.min(1, (now - state.lastGestureTime) / 220);
+        const speed = maxSpeed * (0.28 + 0.72 * ramp);
+        window.scrollBy(0, state.direction * speed * dt / 1000);
+      }
+
+      scrollFrameRef.current = requestAnimationFrame(runScroll);
+    };
+
+    scrollFrameRef.current = requestAnimationFrame(runScroll);
+
+    return () => {
+      if (scrollFrameRef.current) cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    };
+  }, [enabled]);
+
   useEffect(() => () => {
     activeRef.current = false;
     sessionRef.current += 1;
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    if (scrollFrameRef.current) cancelAnimationFrame(scrollFrameRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     detectorRef.current?.close?.();
     cancelClick();
@@ -264,7 +298,7 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     if (!hand) {
       cancelClick();
       clearHover();
-      scrollRef.current = { y: null, time: 0, velocity: 0 };
+      scrollRef.current = { direction: 0, active: false, lastGestureTime: 0 };
       setCursorVisible(false);
       emitStatus("FIND YOUR HAND");
       frameRef.current = requestAnimationFrame(detectFrame);
@@ -309,8 +343,7 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
     setCursor(x, y, gestureType);
 
     if (gestureType === "pointer" || gestureType === "click-hold") {
-      scrollRef.current.y = null;
-      scrollRef.current.velocity = 0;
+      scrollRef.current = { direction: 0, active: false, lastGestureTime: 0 };
 
       const target = getInteractiveTarget(x, y);
       if (target !== hoverRef.current) {
@@ -338,27 +371,20 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
       clearHover();
 
       const now = performance.now();
-      if (scrollRef.current.y !== null) {
-        const delta = y - scrollRef.current.y;
-        const dt = Math.max(8, now - scrollRef.current.time);
-        const instantaneousVelocity = delta / dt;
-        scrollRef.current.velocity = scrollRef.current.velocity * 0.72 + instantaneousVelocity * 0.28;
-        const magnitude = Math.min(95, Math.max(12, Math.abs(scrollRef.current.velocity) * 1600 + Math.abs(delta) * 2.8));
-        const direction = gestureType === "scroll-up" ? -1 : 1;
-        window.scrollBy({ top: direction * magnitude, behavior: "auto" });
-      }
-      scrollRef.current.y = y;
-      scrollRef.current.time = now;
+      const direction = gestureType === "scroll-up" ? -1 : 1;
+      scrollRef.current.direction = direction;
+      scrollRef.current.active = true;
+      scrollRef.current.lastGestureTime = now;
       emitStatus(gestureType === "scroll-up" ? "SCROLL UP" : "SCROLL DOWN");
     } else if (gestureType === "pause") {
       cancelClick();
       clearHover();
-      scrollRef.current = { y: null, time: 0, velocity: 0 };
+      scrollRef.current = { direction: 0, active: false, lastGestureTime: 0 };
       emitStatus("PAUSED");
     } else {
       cancelClick();
       clearHover();
-      scrollRef.current = { y: null, time: 0, velocity: 0 };
+      scrollRef.current = { direction: 0, active: false, lastGestureTime: 0 };
       emitStatus("TRACKING");
     }
 
@@ -422,7 +448,7 @@ function HandControl({ cursorRef, onTrackingChange, onStatusChange }) {
       setEnabled(true);
       lastVideoTimeRef.current = -1;
       gestureStateRef.current = { candidate: "neutral", count: 0, current: "neutral" };
-      scrollRef.current = { y: null, time: 0, velocity: 0 };
+      scrollRef.current = { direction: 0, active: false, lastGestureTime: 0 };
       setCursorVisible(false);
       emitStatus("FIND YOUR HAND");
       frameRef.current = requestAnimationFrame(detectFrame);
